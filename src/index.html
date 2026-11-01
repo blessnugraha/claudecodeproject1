@@ -89,9 +89,17 @@
             </select>
           </label>
           <label class="field compact" id="langWrap" hidden><span>Labels</span><select id="langSel"></select></label>
+          <label class="field compact" id="fyWrap" hidden><span>Fiscal year ends</span>
+            <select id="fySel">
+              <option value="1">Jan</option><option value="2">Feb</option><option value="3">Mar</option><option value="4">Apr</option>
+              <option value="5">May</option><option value="6">Jun</option><option value="7">Jul</option><option value="8">Aug</option>
+              <option value="9">Sep</option><option value="10">Oct</option><option value="11">Nov</option><option value="12" selected>Dec</option>
+            </select>
+          </label>
         </div>
       </div>
       <div class="chips" id="fileChips"></div>
+      <p class="note" id="xbrlNote" hidden></p>
       <div class="pane-body" id="xbrlBody"></div>
     </section>
 

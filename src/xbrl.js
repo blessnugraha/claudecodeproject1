@@ -86,15 +86,16 @@
     return out;
   }
 
-  // Inline XBRL numbers are display text: "1.234.567" or "1,234,567" plus a format hint.
+  // Inline XBRL numbers are display text. Transformation formats seen in practice:
+  // "1,234.5": ixt:numcommadot (2010), ixt:numdotdecimal, ixt:num-dot-decimal
+  // "1.234,5": ixt:numdotcomma (2010), ixt:numcommadecimal, ixt:num-comma-decimal
   function parseIxNumber(raw, format) {
     const f = (format || '').toLowerCase();
     const s = raw.replace(/[\s ]/g, '');
-    if (/zerodash|fixed-zero|fixedzero/.test(f) || /^[-–—]+$/.test(s)) return 0;
+    if (/zerodash|fixed-zero|fixedzero|numdash/.test(f) || /^[-–—]+$/.test(s)) return 0;
     let t;
-    if (/comma-?decimal|numcommadecimal/.test(f)) t = s.replace(/[.'’]/g, '').replace(',', '.');
-    else if (/dot-?decimal|numdotdecimal/.test(f)) t = s.replace(/[,'’]/g, '');
-    else t = s.replace(/,/g, '');
+    if (/numdotcomma|numspacecomma|numcomma$|comma-?decimal|numcommadecimal/.test(f)) t = s.replace(/[.'’]/g, '').replace(',', '.');
+    else t = s.replace(/[,'’]/g, '');
     t = t.replace(/[^0-9.]/g, '');
     const n = parseFloat(t);
     return Number.isFinite(n) ? n : NaN;
@@ -131,27 +132,172 @@
     return { contexts: parseContexts(root), units: parseUnits(root), facts };
   }
 
+  // Elements by local name in an XML document (namespace-aware) or an HTML document (prefix as written).
+  const isHtmlDoc = (doc) => doc.contentType === 'text/html';
+  function ixAll(doc, ixns, local) {
+    return isHtmlDoc(doc) ? [...doc.getElementsByTagName('ix:' + local)] : [...doc.getElementsByTagNameNS(ixns, local)];
+  }
+  const xsiNil = (el) => el.getAttributeNS(NS.xsi, 'nil') === 'true' || el.getAttribute('xsi:nil') === 'true';
+
   function parseInline(doc, ixns) {
     const facts = [];
-    for (const el of doc.getElementsByTagNameNS(ixns, 'nonFraction')) {
+    const tableCache = new Map();
+    const votes = new Map();  // contextRef -> Map(date -> count), from the column heading above each fact
+    const rowLabels = new Map(); // concept local name -> { id, en } from the statement's row headings
+    for (const el of ixAll(doc, ixns, 'nonFraction')) {
       const name = el.getAttribute('name') || '';
-      const nil = el.getAttributeNS(NS.xsi, 'nil') === 'true' || el.getAttribute('xsi:nil') === 'true';
+      const nil = xsiNil(el);
       let num = nil ? null : parseIxNumber(el.textContent, el.getAttribute('format'));
       const scale = parseInt(el.getAttribute('scale') || '0', 10);
       if (num != null && Number.isFinite(num)) {
         num = num * Math.pow(10, scale);
         if (el.getAttribute('sign') === '-') num = -num;
       }
-      facts.push(makeFact({
+      const fact = makeFact({
         local: localPart(name), prefix: prefixPart(name), contextRef: el.getAttribute('contextRef'),
         unitRef: el.getAttribute('unitRef') || 'u', decimals: el.getAttribute('decimals'), nil, num, raw: el.textContent,
-      }));
+      });
+      facts.push(fact);
+      const td = el.closest('td, th');
+      if (!td) continue;
+      const tr = td.parentElement, table = td.closest('table');
+      const dates = table ? headerDates(table, tableCache) : null;
+      const date = dates && dates.get(cellIndex(td));
+      if (date) {
+        if (!votes.has(fact.contextRef)) votes.set(fact.contextRef, new Map());
+        const v = votes.get(fact.contextRef);
+        v.set(date, (v.get(date) || 0) + 1);
+      }
+      if (tr && !rowLabels.has(fact.local)) {
+        const lab = {};
+        for (const c of tr.children) {
+          const cls = c.getAttribute('class') || '';
+          if (/rowHeaderLeft/.test(cls) && text(c)) lab.id = text(c);
+          else if (/rowHeaderRight/.test(cls) && text(c)) lab.en = text(c);
+        }
+        if (lab.id || lab.en) rowLabels.set(fact.local, lab);
+      }
     }
-    for (const el of doc.getElementsByTagNameNS(ixns, 'nonNumeric')) {
+    for (const el of ixAll(doc, ixns, 'nonNumeric')) {
       const name = el.getAttribute('name') || '';
       facts.push(makeFact({ local: localPart(name), prefix: prefixPart(name), contextRef: el.getAttribute('contextRef'), raw: text(el).slice(0, 2000) }));
     }
-    return { contexts: parseContexts(doc), units: parseUnits(doc), facts };
+    return { contexts: parseContexts(doc), units: parseUnits(doc), facts, votes, rowLabels };
+  }
+
+  // Column headings such as "2025-12-31" or "31 Desember 2025" above the value cells.
+  const MONTHS_BY_NAME = { jan: 1, januari: 1, january: 1, feb: 2, februari: 2, february: 2, mar: 3, maret: 3, march: 3, apr: 4, april: 4,
+    mei: 5, may: 5, jun: 6, juni: 6, june: 6, jul: 7, juli: 7, july: 7, agu: 8, agustus: 8, aug: 8, august: 8, sep: 9, september: 9,
+    okt: 10, oktober: 10, oct: 10, october: 10, nov: 11, november: 11, des: 12, desember: 12, dec: 12, december: 12 };
+  const pad = (n) => String(n).padStart(2, '0');
+  function dateFromText(t) {
+    const s = t.replace(/\s+/g, ' ').trim();
+    let m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(s);
+    if (m) return `${m[1]}-${m[2]}-${m[3]}`;
+    m = /^(\d{1,2}) ([A-Za-z]+) (\d{4})$/.exec(s);
+    if (m && MONTHS_BY_NAME[m[2].toLowerCase()]) return `${m[3]}-${pad(MONTHS_BY_NAME[m[2].toLowerCase()])}-${pad(+m[1])}`;
+    return null;
+  }
+  function cellIndex(td) {
+    let i = 0;
+    for (let c = td.previousElementSibling; c; c = c.previousElementSibling) i += +(c.getAttribute('colspan') || 1);
+    return i;
+  }
+  function headerDates(table, cache) {
+    if (cache.has(table)) return cache.get(table);
+    let found = null;
+    for (const tr of table.querySelectorAll('tr')) {
+      if (tr.closest('table') !== table) continue;
+      const cells = [...tr.children].filter((c) => c.localName === 'td' || c.localName === 'th');
+      if (!cells.some((c) => dateFromText(c.textContent))) continue;
+      found = new Map();
+      let i = 0;
+      for (const c of cells) {
+        const d = dateFromText(c.textContent);
+        if (d) found.set(i, d);
+        i += +(c.getAttribute('colspan') || 1);
+      }
+      break;
+    }
+    cache.set(table, found);
+    return found;
+  }
+
+  /*
+   * IDX statement pages (one HTML file per statement, e.g. 1210000.html) carry facts but
+   * not the ix:header with contexts and units. Their context IDs follow a fixed naming
+   * scheme, and the column headings give the period end dates, so the periods can be
+   * rebuilt: CurrentYearDuration = start of fiscal year .. current period end, and so on.
+   */
+  const CTX_RE = /^(PriorEnd|Prior(\d+)|Current|Prior)(Year|Years|Quarter|Period)?(Duration|Instant)(.*)$/;
+  function fyStartFor(end, fyEndMonth) {
+    const [y, m] = end.split('-').map(Number);
+    const fyEndYear = m <= fyEndMonth ? y : y + 1;
+    return fyEndMonth === 12 ? `${fyEndYear}-01-01` : `${fyEndYear - 1}-${pad(fyEndMonth + 1)}-01`;
+  }
+  function dayBefore(iso) {
+    const d = new Date(iso + 'T00:00:00Z');
+    d.setUTCDate(d.getUTCDate() - 1);
+    return d.toISOString().slice(0, 10);
+  }
+  function addYears(iso, n) {
+    const [y, m, d] = iso.split('-').map(Number);
+    const last = new Date(Date.UTC(y + n, m, 0)).getUTCDate();
+    return `${y + n}-${pad(m)}-${pad(Math.min(d, last))}`;
+  }
+  function quarterStart(end) {
+    const [y, m] = end.split('-').map(Number);
+    const sm = m - 2 < 1 ? m + 10 : m - 2;
+    return `${m - 2 < 1 ? y - 1 : y}-${pad(sm)}-01`;
+  }
+  function topVote(votes, ids) {
+    const tally = new Map();
+    for (const id of ids) for (const [d, n] of votes.get(id) || []) tally.set(d, (tally.get(d) || 0) + n);
+    return [...tally.entries()].sort((a, b) => b[1] - a[1])[0]?.[0] || null;
+  }
+  function anchorDates(votes) {
+    const ids = [...votes.keys()];
+    const pick = (re) => topVote(votes, ids.filter((id) => re.test(id)));
+    const cur = pick(/^Current(Year|Period)?Duration$/) || pick(/^Current(Year|Period)?Instant$/) || pick(/^Current/);
+    const prior = pick(/^Prior(Year|Period)?Duration$/) || pick(/^Prior(Year|Period)?Instant$/) || (cur ? addYears(cur, -1) : null);
+    return { cur, prior };
+  }
+  function inferContexts(ids, votes, fyEndMonth) {
+    const { cur, prior } = anchorDates(votes);
+    const contexts = new Map();
+    if (!cur) return contexts;
+    const priorYearEnd = dayBefore(fyStartFor(cur, fyEndMonth));
+    for (const id of ids) {
+      const m = CTX_RE.exec(id);
+      let end, kind, startFor, dims = [];
+      if (m) {
+        kind = m[4];
+        if (m[1] === 'Current') end = cur;
+        else if (m[1] === 'Prior') end = prior;
+        else if (m[1] === 'PriorEnd') end = priorYearEnd;
+        else end = addYears(priorYearEnd, -(+m[2] - 1));
+        startFor = m[3] === 'Quarter' ? quarterStart : (e) => fyStartFor(e, fyEndMonth);
+        if (m[5]) dims = [{ dim: 'context', member: m[5].replace(/^[_-]+/, '') }];
+      } else {
+        end = topVote(votes, [id]);
+        if (!end) continue;
+        kind = /instant/i.test(id) ? 'Instant' : 'Duration';
+        startFor = (e) => fyStartFor(e, fyEndMonth);
+        dims = [{ dim: 'context', member: id }];
+      }
+      const start = kind === 'Duration' ? startFor(end) : null;
+      contexts.set(id, {
+        id, start, end, instant: start ? null : end, months: start ? monthsBetween(start, end) : 0, dims, entity: '',
+      });
+    }
+    return contexts;
+  }
+  function unitFromId(id) {
+    let m;
+    if ((m = /^([A-Z]{3})(Per|\/)Shares?$/i.exec(id))) return m[1].toUpperCase() + '/shares';
+    if (/^shares?$/i.test(id)) return 'shares';
+    if (/^pure$/i.test(id)) return 'pure';
+    return id;
   }
 
   // Label linkbase -> Map(conceptKey -> { lang: label })
@@ -210,35 +356,99 @@
     return entries;
   }
 
+  function parseDocument(bytes, name) {
+    const str = decode(bytes);
+    try { return parseXml(str, name); }
+    catch (e) {
+      // a statement page saved by a browser may no longer be well-formed XML
+      if (/\.html?$/i.test(name) && /<ix:nonfraction/i.test(str)) return new DOMParser().parseFromString(str, 'text/html');
+      throw e;
+    }
+  }
+
   /*
-   * Read files into instances. Returns { instances, labels, warnings }.
+   * Read files into instances. Returns { instances, labels, warnings, inferred }.
    * Each instance: { source, contexts, units, facts, entityName, entityCode, periodEnd }.
+   * options.fyEndMonth (default 12) is used only when periods have to be rebuilt from
+   * statement pages that lack their ix:header.
    */
-  async function readFiles(files) {
-    const instances = [], warnings = [], labels = new Map();
+  async function readFiles(files, options = {}) {
+    const fyEndMonth = options.fyEndMonth || 12;
+    const instances = [], warnings = [], labels = new Map(), inferred = [];
+    const fragments = [];   // inline pages whose contexts are defined elsewhere
+    const rowLabels = new Map();
     for (const file of files) {
       let entries;
       try { entries = await expand(file); }
       catch (e) { warnings.push(e.message); continue; }
+      const container = entries.length > 1 || entries[0].name !== file.name ? file.name : '(loose files)';
       for (const { name, bytes } of entries) {
         let doc;
-        try { doc = parseXml(decode(bytes), name); }
+        try { doc = parseDocument(bytes, name); }
         catch (e) { warnings.push(e.message); continue; }
         const root = doc.documentElement;
-        if (doc.getElementsByTagNameNS(NS.link, 'labelLink').length) { parseLabels(doc, labels); continue; }
+        if (!isHtmlDoc(doc) && doc.getElementsByTagNameNS(NS.link, 'labelLink').length) { parseLabels(doc, labels); continue; }
         let parsed = null;
-        if (root.namespaceURI === NS.xbrli && root.localName === 'xbrl') parsed = parsePlain(doc);
+        if (!isHtmlDoc(doc) && root.namespaceURI === NS.xbrli && root.localName === 'xbrl') parsed = parsePlain(doc);
+        else if (isHtmlDoc(doc)) parsed = parseInline(doc, null);
         else {
-          const ixns = IX_NS.find((ns) => doc.getElementsByTagNameNS(ns, 'header').length);
+          const ixns = IX_NS.find((ns) => doc.getElementsByTagNameNS(ns, 'nonFraction').length || doc.getElementsByTagNameNS(ns, 'header').length);
           if (ixns) parsed = parseInline(doc, ixns);
         }
         if (!parsed) continue; // schema, presentation linkbase, etc.
-        const numericCount = parsed.facts.filter((f) => f.numeric).length;
-        if (!numericCount) { warnings.push(`${name} has no numeric facts`); continue; }
-        instances.push(finishInstance(name, parsed));
+        if (parsed.rowLabels) for (const [k, v] of parsed.rowLabels) if (!rowLabels.has(k)) rowLabels.set(k, v);
+        const numeric = parsed.facts.filter((f) => f.numeric);
+        if (!numeric.length) { if (!parsed.contexts.size) warnings.push(`${name} has no numeric facts`); else instances.push(Object.assign(finishInstance(name, parsed), { container, headerOnly: true })); continue; }
+        const resolved = numeric.filter((f) => parsed.contexts.has(f.contextRef)).length;
+        if (resolved >= numeric.length * 0.9) instances.push(Object.assign(finishInstance(name, parsed), { container }));
+        else fragments.push({ name, container, parsed, anchor: anchorDates(parsed.votes || new Map()).cur });
       }
     }
-    return { instances, labels, warnings };
+
+    // Statement pages: use the package's own contexts when another file carries them,
+    // otherwise rebuild the periods from the IDX context names and column headings.
+    const groups = new Map();
+    for (const fr of fragments) {
+      const key = fr.container + '|' + (fr.anchor || '?');
+      if (!groups.has(key)) groups.set(key, []);
+      groups.get(key).push(fr);
+    }
+    for (const group of groups.values()) {
+      const facts = group.flatMap((g) => g.parsed.facts);
+      const refs = [...new Set(facts.filter((f) => f.numeric).map((f) => f.contextRef))];
+      const host = instances.find((i) => i.container === group[0].container && refs.filter((r) => i.contexts.has(r)).length >= refs.length * 0.9);
+      if (host) {
+        host.facts.push(...facts);
+        host.source += ' + ' + group.map((g) => shortName(g.name)).join(' + ');
+        delete host.headerOnly;
+        continue;
+      }
+      const votes = new Map();
+      for (const g of group) for (const [id, v] of g.parsed.votes) {
+        if (!votes.has(id)) votes.set(id, new Map());
+        for (const [d, n] of v) votes.get(id).set(d, (votes.get(id).get(d) || 0) + n);
+      }
+      const contexts = inferContexts(refs, votes, fyEndMonth);
+      const names = group.map((g) => shortName(g.name)).join(' + ');
+      if (!contexts.size) {
+        warnings.push(`${names}: these pages have no period definitions and no dated column headings, so their figures cannot be placed in time.`);
+        continue;
+      }
+      const units = new Map();
+      for (const f of facts) if (f.unitRef && !units.has(f.unitRef)) units.set(f.unitRef, unitFromId(f.unitRef));
+      const { cur, prior } = anchorDates(votes);
+      const inst = Object.assign(finishInstance(names, { contexts, units, facts }), { container: group[0].container, inferred: { cur, prior, fyEndMonth } });
+      instances.push(inst);
+      inferred.push({ source: names, cur, prior, fyEndMonth });
+    }
+    for (const i of instances.filter((x) => x.headerOnly)) instances.splice(instances.indexOf(i), 1);
+    for (const [k, v] of rowLabels) if (!labels.has(k)) labels.set(k, v);
+    return { instances, labels, warnings, inferred };
+  }
+
+  // "b98d6242-1210000.html" and "instance.zip › 1210000.html" both read as "1210000.html"
+  function shortName(name) {
+    return name.split(' › ').pop().split('/').pop().replace(/^[0-9a-f]{8}-(?=\d{7}\.html?$)/i, '');
   }
 
   function finishInstance(source, parsed) {
@@ -295,6 +505,7 @@
           if (!ctx.dims.length && f.value && f.value.length <= 160 && info.length < 60 && !info.some((x) => x.local === f.local)) info.push({ local: f.local, value: f.value });
           continue;
         }
+        if (f.value == null) continue; // nil: reported as not applicable
         const colKey = columnFor(ctx);
         if (!colKey) continue;
         const dimKey = ctx.dims.map((d) => localPart(d.member)).join(' · ');
@@ -316,6 +527,7 @@
     }
 
     const cols = [...columns.values()].filter((c) => [...rows.values()].some((r) => r.cells.has(c.key)));
+    for (const c of cols) c.count = [...rows.values()].filter((r) => !r.dims.length && r.cells.has(c.key)).length;
     cols.sort((a, b) => (a.end < b.end ? 1 : a.end > b.end ? -1 : b.months - a.months));
     const langs = new Set();
     for (const l of labels.values()) Object.keys(l).forEach((k) => langs.add(k));
@@ -334,5 +546,5 @@
     return { date: fmtDate(col.end), span: col.months ? `${col.months} months` : 'point in time' };
   }
 
-  global.XBRL = { readFiles, buildModel, humanize, columnLabel, fmtDate, parseIxNumber, monthsBetween };
+  global.XBRL = { readFiles, buildModel, humanize, columnLabel, fmtDate, parseIxNumber, monthsBetween, inferContexts, dateFromText, shortName };
 })(typeof window !== 'undefined' ? window : globalThis);

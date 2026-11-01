@@ -24,7 +24,7 @@
     OTHER_INCOME: ['OtherIncome', 'OtherIncomes', 'OtherOperatingIncome', 'OtherGains'],
     OTHER_EXPENSE: ['OtherExpense', 'OtherExpenses', 'OtherOperatingExpense', 'OtherOperatingExpenses', 'OtherLosses'],
     FIN_INCOME: ['FinanceIncome', 'FinanceIncomes', 'InterestIncome', 'InterestRevenue'],
-    FIN_COST: ['FinanceCosts', 'FinanceCost', 'FinanceExpenses', 'FinanceExpense', 'InterestExpense', 'InterestExpenses'],
+    FIN_COST: ['FinanceCosts', 'InterestAndFinanceCosts', 'FinanceCost', 'FinanceExpenses', 'FinanceExpense', 'InterestExpense', 'InterestExpenses'],
     EBT: ['ProfitLossBeforeTax', 'ProfitLossBeforeIncomeTax', 'ProfitBeforeTax', 'ProfitLossBeforeIncomeTaxes', 'IncomeLossBeforeIncomeTax'],
     PROFIT_LOSS: ['ProfitLoss', 'ProfitLossForThePeriod', 'ProfitLossForTheYear', 'ProfitLossFromContinuingOperations'],
     TAX: [{ n: 'IncomeTaxExpenseContinuingOperations' }, { n: 'IncomeTaxExpense' }, { n: 'TaxExpense' }, { n: 'TaxBenefitExpenses', sign: 'flip' }, { n: 'IncomeTaxBenefitExpense', sign: 'flip' }, { n: 'TaxBenefitExpense', sign: 'flip' }],
@@ -40,7 +40,7 @@
     RECV3: [/^(Current|ShortTerm)?TradeReceivables?ThirdPart(y|ies)$/i, 'TradeReceivables', 'CurrentTradeReceivables', /^(Current)?TradeAndOther(Current)?Receivables$/i],
     RECVRP: [/^(Current|ShortTerm)?TradeReceivables?RelatedPart(y|ies)$/i, 'CurrentReceivablesDueFromRelatedParties', 'TradeReceivablesDueFromRelatedParties'],
     INV: ['Inventories', 'CurrentInventories', 'Inventory', 'CurrentInventoriesNet'],
-    PREPAID: ['PrepaidExpenses', 'CurrentPrepaidExpenses', 'CurrentPrepayments', 'Prepayments', 'CurrentAdvances', 'Advances', 'PrepaidExpensesAndAdvances', 'AdvancesAndPrepayments'],
+    PREPAID: ['PrepaidExpensesAndAdvances', 'AdvancesAndPrepayments', { sum: ['PrepaidExpenses', 'CurrentPrepaidExpenses', 'CurrentPrepayments', 'Prepayments', 'CurrentAdvances', 'OtherCurrentAdvances', 'Advances'] }],
     CURRENT_ASSETS: ['CurrentAssets', 'TotalCurrentAssets'],
     PPE_GROSS: ['PropertyPlantAndEquipmentGross', 'PropertyPlantAndEquipmentGrossCarryingAmount', 'GrossCarryingAmountPropertyPlantAndEquipment'],
     ACC_DEP: ['AccumulatedDepreciationPropertyPlantAndEquipment', 'AccumulatedDepreciationAmortisationAndImpairmentPropertyPlantAndEquipment', 'AccumulatedDepreciation'],
@@ -51,14 +51,14 @@
     NCA: ['NoncurrentAssets', 'NonCurrentAssets', 'TotalNonCurrentAssets'],
     ASSETS: ['Assets', 'TotalAssets'],
     ST_DEBT: ['ShortTermBankLoans', 'ShortTermBorrowings', 'ShorttermBorrowings', 'ShortTermLoans', 'CurrentBankLoans', 'BankLoansShortTerm'],
-    CPLTD: ['CurrentPortionOfLongtermBorrowings', 'CurrentMaturitiesOfLongTermBankLoans', 'CurrentMaturitiesOfBankLoans', 'CurrentMaturitiesOfLongTermLoans', 'CurrentPortionOfLongTermBankLoans'],
+    CPLTD: ['CurrentPortionOfLongtermBorrowings', { sum: ['CurrentMaturitiesOfBankLoans', 'CurrentMaturitiesOfLongTermBankLoans', 'CurrentMaturitiesOfLongTermLoans', 'CurrentPortionOfLongTermBankLoans', 'CurrentMaturitiesOfBondsPayable', 'CurrentMaturitiesOfOtherBorrowings'] }],
     PAY3: [/^(Current|ShortTerm)?TradePayables?ThirdPart(y|ies)$/i, 'TradePayables', 'CurrentTradePayables', /^(Current)?TradeAndOther(Current)?Payables$/i],
     PAYRP: [/^(Current|ShortTerm)?TradePayables?RelatedPart(y|ies)$/i, 'TradePayablesDueToRelatedParties'],
     ACCRUED: ['AccruedExpenses', 'CurrentAccruedExpenses', 'Accruals', 'AccruedLiabilities'],
     CURRENT_LIAB: ['CurrentLiabilities', 'TotalCurrentLiabilities'],
     LT_LOANS: ['LongTermBankLoans', 'LongTermBankLoansNetOfCurrentMaturities', 'LongtermBorrowings', 'NoncurrentPortionOfLongtermBorrowings', 'LongTermLoans', 'NonCurrentBankLoans'],
-    BONDS: ['BondsPayable', 'BondsPayableNetOfCurrentMaturities', 'Bonds', 'BondsIssued', 'NoncurrentBondsIssued', 'Sukuk'],
-    LEASE: ['LeaseLiabilitiesNetOfCurrentMaturities', 'NoncurrentLeaseLiabilities', 'LongTermLeaseLiabilities', 'LeaseLiabilities'],
+    BONDS: ['LongTermBondsPayable', 'BondsPayable', 'BondsPayableNetOfCurrentMaturities', 'Bonds', 'BondsIssued', 'NoncurrentBondsIssued', { sum: ['LongTermSukuk', 'Sukuk', 'SukukIjarah', 'SukukMudharabah'] }],
+    LEASE: ['LongTermFinanceLeaseLiabilities', 'LongTermLeaseLiabilities', 'LeaseLiabilitiesNetOfCurrentMaturities', 'NoncurrentLeaseLiabilities', 'LeaseLiabilities'],
     NCL: ['NoncurrentLiabilities', 'NonCurrentLiabilities', 'TotalNonCurrentLiabilities'],
     LIAB: ['Liabilities', 'TotalLiabilities'],
     PAID_IN: ['IssuedCapital', 'CommonStocks', 'ShareCapital', 'CommonStock', 'IssuedAndFullyPaidCapital'],
@@ -69,20 +69,22 @@
     EQUITY: ['Equity', 'TotalEquity'],
 
     RECEIPTS_CUST: ['ReceiptsFromCustomers', 'CashReceiptsFromCustomers', 'ReceiptsFromSalesOfGoodsAndRenderingOfServices', 'CashReceivedFromCustomers'],
-    PAY_SUPP: ['PaymentsToSuppliers', 'PaymentsToSuppliersForGoodsAndServices', 'CashPaidToSuppliers', 'PaymentsToSuppliersAndOthers'],
-    PAY_EMP: ['PaymentsToEmployees', 'PaymentsToAndOnBehalfOfEmployees', 'CashPaidToEmployees'],
-    PAY_OPEX: ['PaymentsForOperatingExpenses', 'CashPaidForOperatingExpenses', 'PaymentsForOtherOperatingExpenses'],
-    INT_PAID: ['InterestPaidClassifiedAsOperatingActivities', 'InterestPaid', 'PaymentsOfInterest', 'CashPaidForInterest'],
-    TAX_PAID: ['IncomeTaxesPaidRefundClassifiedAsOperatingActivities', 'IncomeTaxesPaidRefund', 'IncomeTaxesPaid', 'PaymentsOfIncomeTaxes', 'PaymentsForIncomeTaxes'],
+    PAY_SUPP: ['PaymentsToSuppliersForGoodsAndServices', 'PaymentsToSuppliers', 'PaymentsToSuppliersForGoodsAndServices', 'CashPaidToSuppliers', 'PaymentsToSuppliersAndOthers'],
+    PAY_EMP: ['PaymentsForSalariesAndAllowances', 'PaymentsToEmployees', 'PaymentsToAndOnBehalfOfEmployees', 'CashPaidToEmployees'],
+    PAY_OPEX: ['OtherCashPaymentsForOperatingActivities', 'PaymentsForOperatingExpenses', 'CashPaidForOperatingExpenses', 'PaymentsForOtherOperatingExpenses'],
+    INT_PAID: ['InterestsPaidFromOperatingActivities', 'InterestPaidFromOperatingActivities', 'InterestPaidClassifiedAsOperatingActivities', 'InterestPaid', 'PaymentsOfInterest', 'CashPaidForInterest'],
+    // IDX tags taxes as 'refunded (paid)': negative when paid, so flip it to the sheet's positive 'paid'
+    TAX_PAID: [{ n: 'IncomeTaxesRefundedPaidFromOperatingActivities', sign: 'flip' }, { n: 'IncomeTaxesRefundedPaid', sign: 'flip' }, 'IncomeTaxesPaidRefundClassifiedAsOperatingActivities', 'IncomeTaxesPaidRefund', 'IncomeTaxesPaid', 'PaymentsOfIncomeTaxes', 'PaymentsForIncomeTaxes'],
     OCF: ['CashFlowsFromUsedInOperatingActivities', 'NetCashFlowsFromUsedInOperatingActivities', 'NetCashFlowsReceivedFromUsedInOperatingActivities', 'NetCashProvidedByUsedInOperatingActivities'],
-    CAPEX: ['PurchaseOfPropertyPlantAndEquipment', 'PurchaseOfPropertyPlantAndEquipmentClassifiedAsInvestingActivities', 'PaymentsForPropertyPlantAndEquipment', 'AcquisitionOfPropertyPlantAndEquipment', 'PaymentsToAcquirePropertyPlantAndEquipment'],
+    CAPEX: [{ sum: ['PaymentsForAcquisitionOfPropertyPlantAndEquipment', 'PaymentsForAdvancesForPurchaseOfPropertyPlantAndEquipment'] }, 'PurchaseOfPropertyPlantAndEquipment', 'PurchaseOfPropertyPlantAndEquipmentClassifiedAsInvestingActivities', 'PaymentsForPropertyPlantAndEquipment', 'AcquisitionOfPropertyPlantAndEquipment', 'PaymentsToAcquirePropertyPlantAndEquipment'],
     PROCEEDS_PPE: ['ProceedsFromSalesOfPropertyPlantAndEquipment', 'ProceedsFromSalesOfPropertyPlantAndEquipmentClassifiedAsInvestingActivities', 'ProceedsFromDisposalOfPropertyPlantAndEquipment'],
     ICF: ['CashFlowsFromUsedInInvestingActivities', 'NetCashFlowsFromUsedInInvestingActivities', 'NetCashFlowsReceivedFromUsedInInvestingActivities', 'NetCashProvidedByUsedInInvestingActivities'],
-    PROCEEDS_DEBT: ['ProceedsFromBorrowings', 'ProceedsFromBorrowingsClassifiedAsFinancingActivities', 'ProceedsFromBankLoans', 'ProceedsFromLongTermBankLoans'],
-    REPAY_DEBT: ['RepaymentsOfBorrowings', 'RepaymentsOfBorrowingsClassifiedAsFinancingActivities', 'RepaymentsOfBankLoans', 'PaymentsOfBankLoans', 'RepaymentsOfLongTermBankLoans'],
+    INV_PURCH: [{ sum: [/^PaymentsForAcquisitionOf(Subsidiaries|InterestsInJointVentures|InterestsInAssociates|InvestmentsInAssociates|Associates|JointVentures)$/i] }, 'CashFlowsUsedInObtainingControlOfSubsidiariesOrOtherBusinesses', 'PurchaseOfInterestsInAssociates'],
+    PROCEEDS_DEBT: ['ProceedsFromBorrowings', 'ProceedsFromBorrowingsClassifiedAsFinancingActivities', { sum: [/^ProceedsFrom(ShortTerm|LongTerm)?(BankLoans|OtherBorrowings|Loans|BondsPayable|IssuanceOfBonds|BondsIssued|Sukuk)$/i] }],
+    REPAY_DEBT: ['RepaymentsOfBorrowings', 'RepaymentsOfBorrowingsClassifiedAsFinancingActivities', { sum: [/^(PaymentsOf|RepaymentsOf|RepaymentOf)(ShortTerm|LongTerm)?(BankLoans|OtherBorrowings|Loans|BondsPayable|Bonds|Sukuk)$/i] }],
     EQ_RAISED: ['ProceedsFromIssuingShares', 'ProceedsFromIssuanceOfShares', 'ProceedsFromIssuanceOfCommonStock'],
     BUYBACK: ['PaymentsToAcquireOrRedeemEntitysShares', 'PurchaseOfTreasuryShares', 'PaymentsForTreasuryShares'],
-    DIV_PAID: ['DividendsPaidClassifiedAsFinancingActivities', 'DividendsPaid', 'PaymentsOfDividends', 'CashDividendsPaid'],
+    DIV_PAID: ['DividendsPaidFromFinancingActivities', 'DividendsPaidClassifiedAsFinancingActivities', 'DividendsPaid', 'PaymentsOfDividends', 'CashDividendsPaid'],
     CFF: ['CashFlowsFromUsedInFinancingActivities', 'NetCashFlowsFromUsedInFinancingActivities', 'NetCashFlowsReceivedFromUsedInFinancingActivities', 'NetCashProvidedByUsedInFinancingActivities'],
   };
 
@@ -116,7 +118,8 @@
       derive: (x) => (x.f(C.EBT) != null && x.f(C.PROFIT_LOSS) != null ? { v: x.f(C.EBT) - x.f(C.PROFIT_LOSS), how: 'Profit before tax − Profit for the period' } : null) },
     { key: 'nci', label: 'minority interest (nci)', pick: C.NCI_PL, deriveFirst: true,
       derive: (x) => (x.f(C.PROFIT_LOSS) != null && x.f(C.PARENT_PL) != null ? { v: x.f(C.PROFIT_LOSS) - x.f(C.PARENT_PL), how: 'Profit for the period − Profit attributable to parent' } : null) },
-    { key: 'shares', label: 'shares outstanding (million)', kind: 'shares', pick: C.SHARES },
+    { key: 'shares', label: 'shares outstanding (million)', kind: 'shares', pick: C.SHARES,
+      fallbackDerive: (x) => (x.f(C.PARENT_PL) != null && x.f(C.BASIC_EPS) ? { v: Math.round(x.f(C.PARENT_PL) / x.f(C.BASIC_EPS)), how: 'Approximate: profit to parent ÷ basic EPS. EPS is rounded, so this is close to the weighted-average share count, not exact. The exact number is in the notes.' } : null) },
     { key: 'epsDil', label: 'eps - diluted (idr)', kind: 'pershare', pick: C.DIL_EPS },
     { key: 'dps', label: 'dps - dividend per share (idr)', kind: 'pershare', pick: C.DPS },
 
@@ -174,8 +177,9 @@
       derive: (x) => (x.f(C.OCF) == null ? null : { v: x.f(C.OCF) - (S([x.got('cfCust')]) - S(['cfSupp', 'cfEmp', 'cfOpex', 'cfInt', 'cfTax'].map(x.got))), how: 'Residual: reported operating cash flow − lines above' }) },
     { key: 'capex', label: 'capital expenditure (capex paid)', sign: 'pos', pick: C.CAPEX },
     { key: 'disposal', label: 'proceeds from asset disposals', pick: C.PROCEEDS_PPE },
+    { key: 'invPurch', label: 'purchase of investments / subsidiaries', sign: 'pos', pick: C.INV_PURCH },
     { key: 'icfOther', label: 'other investing cash flows', deriveOnly: true,
-      derive: (x) => (x.f(C.ICF) == null ? null : { v: x.f(C.ICF) - (-S([x.got('capex')]) + S([x.got('disposal')])), how: 'Residual: reported investing cash flow − lines above' }) },
+      derive: (x) => (x.f(C.ICF) == null ? null : { v: x.f(C.ICF) - (-S([x.got('capex')]) + S([x.got('disposal')]) - S([x.got('invPurch')])), how: 'Residual: reported investing cash flow − lines above' }) },
     { key: 'debtIn', label: 'debt raised (new loans/bonds)', sign: 'pos', pick: C.PROCEEDS_DEBT },
     { key: 'debtOut', label: 'debt repaid (principal only)', sign: 'pos', pick: C.REPAY_DEBT },
     { key: 'eqIn', label: 'equity raised (ipo/rights issue/pp)', sign: 'pos', pick: C.EQ_RAISED },
@@ -256,7 +260,7 @@
     const year = (c) => +c.end.slice(0, 4), md = (c) => c.end.slice(5);
     const find = (months, y, mmdd) =>
       cols.find((c) => near(c.months, months) && year(c) === y && (!mmdd || md(c) === mmdd)) ||
-      cols.find((c) => c.months === 0 && year(c) === y && (!mmdd || md(c) === mmdd)) || null;
+      cols.find((c) => c.months === 0 && (c.count || 0) >= 5 && year(c) === y && (!mmdd || md(c) === mmdd)) || null;
     for (const months of [12, 6]) {
       const pool = cols.filter((c) => near(c.months, months));
       const base = pool[0];
@@ -277,8 +281,21 @@
     return { byLocal, rows: model.rows.filter((r) => !r.dims.length) };
   }
 
+  const rowsFor = (index, n) => (n instanceof RegExp ? index.rows.filter((r) => n.test(r.local)) : [index.byLocal.get(n.toLowerCase())].filter(Boolean));
+
   function lookup(index, names, colKey) {
     for (const entry of names) {
+      if (entry && entry.sum) {
+        // several tags that together make up one sheet line, e.g. capex = PP&E bought + advances for PP&E
+        let total = 0;
+        const found = [];
+        for (const n of entry.sum) for (const row of rowsFor(index, n)) {
+          const cell = row.cells.get(colKey);
+          if (cell && cell.value != null && !found.includes(row)) { total += cell.value; found.push(row); }
+        }
+        if (found.length) return { value: total, row: found[0], rows: found, sign: entry.sign || null };
+        continue;
+      }
       const n = typeof entry === 'object' && !(entry instanceof RegExp) ? entry.n : entry;
       const sign = typeof entry === 'object' && !(entry instanceof RegExp) ? entry.sign : null;
       const rows = n instanceof RegExp ? index.rows.filter((r) => n.test(r.local)) : [index.byLocal.get(n.toLowerCase())].filter(Boolean);
@@ -313,7 +330,8 @@
         const tryPick = (names, sign, note) => {
           const h = names && lookup(index, names, colKey);
           if (!h) return null;
-          return { raw: applySign(h.value, h.sign || sign), how: 'Tagged ' + h.row.qname + (sign === 'pos' && h.value < 0 ? ' (sign flipped: the sheet stores this as a positive number)' : h.sign === 'flip' ? ' (sign flipped: tagged as benefit/expense)' : ''), concept: h.row.qname, note };
+          const tags = h.rows && h.rows.length > 1 ? 'Sum of ' + h.rows.map((r) => r.qname).join(' + ') : 'Tagged ' + h.row.qname;
+          return { raw: applySign(h.value, h.sign || sign), how: tags + (sign === 'pos' && h.value < 0 ? ' (sign flipped: the sheet stores this as a positive number)' : h.sign === 'flip' ? ' (sign flipped: the tag is signed the other way round from the sheet)' : ''), concept: h.row.qname, note };
         };
         if (rule.onlyIf && !rule.onlyIf(x)) { got.set(rule.key, null); continue; }
         if (rule.deriveOnly) res = tryDerive(rule.derive);

@@ -15,7 +15,7 @@
     tgt: null,              // { sheet, row, col|null }
     undo: [], prov: new Map(), dirty: false,
     filter: '', dims: false, scale: 1, lang: null,
-    moneyFactor: 1, sharesFactor: 1,
+    moneyFactor: 1, sharesFactor: 1, fyEndMonth: 12, inferred: [],
     lastCopy: null, autoProps: [],
   };
   let fileSeq = 0;
@@ -114,7 +114,8 @@
     }
     $('xbrlSub').textContent = 'Reading…';
     try {
-      const { instances, labels, warnings } = await window.XBRL.readFiles(state.files.map((f) => f.file));
+      const { instances, labels, warnings, inferred } = await window.XBRL.readFiles(state.files.map((f) => f.file), { fyEndMonth: state.fyEndMonth });
+      state.inferred = inferred;
       if (warnings.length) toast(warnings[0] + (warnings.length > 1 ? ` (+${warnings.length - 1} more)` : ''), !instances.length);
       state.labels = labels;
       state.model = instances.length ? window.XBRL.buildModel(instances, labels) : null;
@@ -430,7 +431,7 @@
     }
     const m = state.model;
     const ents = [...new Set(m.instances.map((i) => i.entityName || i.entityCode).filter(Boolean))];
-    $('xbrlSub').textContent = `${ents.join(', ') || 'Filing'} · ${m.instances.length} filing${m.instances.length > 1 ? 's' : ''} · ${m.columns.length} periods`;
+    $('xbrlSub').textContent = `${ents.join(', ') || 'Company not named in these files'} · ${m.instances.length} filing${m.instances.length > 1 ? 's' : ''} · ${m.columns.length} periods`;
 
     const q = state.filter.trim().toLowerCase();
     let rows = m.rows.filter((r) => state.dims || !r.dims.length);
@@ -477,6 +478,13 @@
     el.innerHTML = state.files.map((f) => `<span class="chip"><span title="${esc(f.file.name)}">${esc(f.file.name)}</span><button type="button" data-remove="${f.id}" aria-label="Remove ${esc(f.file.name)}">×</button></span>`).join('');
     const langs = state.model ? state.model.langs : [];
     $('langWrap').hidden = langs.length < 2;
+    const inf = state.model ? state.inferred : [];
+    $('fyWrap').hidden = !inf.length;
+    $('xbrlNote').hidden = !inf.length;
+    if (inf.length) {
+      const month = $('fySel').selectedOptions[0].textContent;
+      $('xbrlNote').textContent = inf.map((i) => `${i.source}: no period definitions inside, so periods were rebuilt from the column headings (current ${window.XBRL.fmtDate(i.cur)}, prior ${window.XBRL.fmtDate(i.prior)}) and IDX context names, assuming the fiscal year ends in ${month}.`).join(' ') + ' Change “Fiscal year ends” if that is wrong. Opening the full instance.zip avoids the guess.';
+    }
     if (langs.length >= 2) $('langSel').innerHTML = langs.map((l) => `<option value="${esc(l)}"${l === state.lang ? ' selected' : ''}>${esc({ en: 'English', id: 'Indonesia' }[l] || l)}</option>`).join('');
   }
 
@@ -780,6 +788,7 @@
     $('dimsChk').addEventListener('change', (e) => { state.dims = e.target.checked; renderXbrl(); });
     $('scaleSel').addEventListener('change', (e) => { state.scale = Number(e.target.value); state.scaleChosen = true; renderXbrl(); });
     $('langSel').addEventListener('change', (e) => { state.lang = e.target.value; renderXbrl(); renderTransfer(); });
+    $('fySel').addEventListener('change', (e) => { state.fyEndMonth = Number(e.target.value); rebuildXbrl(); });
     $('fileChips').addEventListener('click', (e) => {
       const b = e.target.closest('button[data-remove]');
       if (!b) return;
