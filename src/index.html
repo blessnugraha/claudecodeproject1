@@ -12,90 +12,88 @@
 </head>
 <body>
 <div class="app">
-  <header class="appbar">
-    <div class="brand">
-      <svg class="mark" viewBox="0 0 32 32" aria-hidden="true"><rect x="3" y="5" width="11" height="22" rx="1.5"/><rect x="18" y="5" width="11" height="22" rx="1.5"/><path d="M12 16h8m-3-3 3 3-3 3"/></svg>
-      <div>
+  <header class="topbar">
+    <div class="bar-row">
+      <div class="brand">
+        <svg class="mark" viewBox="0 0 32 32" aria-hidden="true"><rect x="3" y="5" width="11" height="22" rx="1.5"/><rect x="18" y="5" width="11" height="22" rx="1.5"/><path d="M12 16h8m-3-3 3 3-3 3"/></svg>
         <h1>IDX XBRL Workbench</h1>
-        <p class="tagline">Copy figures from IDX XBRL filings into your Excel model</p>
+      </div>
+      <div class="group">
+        <label class="btn sm" for="xbrlInput">Open XBRL</label>
+        <input type="file" id="xbrlInput" multiple accept=".xbrl,.xml,.zip,.xhtml,.html,.htm" class="visually-hidden">
+        <label class="btn sm" for="xlsxInput">Open Excel</label>
+        <input type="file" id="xlsxInput" accept=".xlsx,.xlsm" class="visually-hidden">
+      </div>
+      <div class="group push">
+        <button type="button" class="btn sm" id="autoBtn" disabled>Auto-fill…</button>
+        <button type="button" class="btn sm primary" id="saveBtn" disabled>Save workbook</button>
       </div>
     </div>
-    <div class="file-actions">
-      <label class="btn" for="xbrlInput">Open XBRL</label>
-      <input type="file" id="xbrlInput" multiple accept=".xbrl,.xml,.zip,.xhtml,.html,.htm" class="visually-hidden">
-      <label class="btn" for="xlsxInput">Open Excel</label>
-      <input type="file" id="xlsxInput" accept=".xlsx,.xlsm" class="visually-hidden">
-      <button type="button" class="btn primary" id="saveBtn" disabled>Save filled workbook</button>
-    </div>
-  </header>
-
-  <section class="transfer" aria-label="Copy and paste">
-    <div class="slots">
-      <div class="slot source" id="srcSlot">
-        <span class="slot-label">Copy from XBRL</span>
-        <span class="slot-text" id="srcText">Click a value, or a row name to take the whole row</span>
+    <div class="bar-row transfer" aria-label="Copy and paste">
+      <div class="slot source" id="srcSlot" title="Copy from XBRL: click a value, or a row name for the whole row">
+        <span class="slot-label">From</span><span class="slot-text" id="srcText">Click a value, or a row name for the whole row</span>
       </div>
       <svg class="slot-arrow" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 12h15m-5-5 5 5-5 5"/></svg>
-      <div class="slot target" id="tgtSlot">
-        <span class="slot-label">Paste into sheet</span>
-        <span class="slot-text" id="tgtText">Click a cell, or a row number to fill every mapped year</span>
+      <div class="slot target" id="tgtSlot" title="Paste into the sheet: click a cell, or a row number for every mapped year">
+        <span class="slot-label">To</span><span class="slot-text" id="tgtText">Click a cell, or a row number for every mapped year</span>
       </div>
-    </div>
-    <div class="controls">
-      <label class="field"><span>Unit</span>
-        <select id="unitSel">
-          <option value="auto">Auto by unit</option>
-          <option value="1">As filed (×1)</option>
-          <option value="1e3">÷ 1,000 (thousand)</option>
-          <option value="1e6">÷ 1,000,000 (million)</option>
-          <option value="1e9">÷ 1,000,000,000 (billion)</option>
-        </select>
-      </label>
-      <label class="field"><span>Sign</span>
-        <select id="signSel">
-          <option value="asis">As filed</option>
-          <option value="flip">Flip sign</option>
-          <option value="pos">Always positive</option>
-        </select>
-      </label>
-      <label class="field"><span>Mode</span>
-        <select id="modeSel">
-          <option value="replace">Replace</option>
-          <option value="add">Add to cell</option>
-        </select>
-      </label>
-      <div class="buttons">
-        <button type="button" class="btn" id="copyBtn" disabled title="Copy to the clipboard (Ctrl+C)">Copy</button>
-        <button type="button" class="btn primary" id="pasteBtn" disabled title="Paste into the selected cell or row (Ctrl+V)">Paste</button>
-        <button type="button" class="btn" id="undoBtn" disabled title="Undo the last paste or edit (Ctrl+Z)">Undo</button>
-        <button type="button" class="btn" id="autoBtn" disabled>Auto-fill…</button>
+      <div class="group">
+        <label class="mini" title="Divide each value by this before pasting. Auto: IDR uses the sheet's unit, shares use millions, per-share values stay as filed."><span>Unit</span>
+          <select id="unitSel">
+            <option value="auto">Auto</option>
+            <option value="1">×1</option>
+            <option value="1e3">÷ thousand</option>
+            <option value="1e6">÷ million</option>
+            <option value="1e9">÷ billion</option>
+          </select>
+        </label>
+        <label class="mini"><span>Sign</span>
+          <select id="signSel">
+            <option value="asis">As filed</option>
+            <option value="flip">Flip</option>
+            <option value="pos">Positive</option>
+          </select>
+        </label>
+        <label class="mini"><span>Mode</span>
+          <select id="modeSel">
+            <option value="replace">Replace</option>
+            <option value="add">Add</option>
+          </select>
+        </label>
+      </div>
+      <div class="group">
+        <button type="button" class="btn sm" id="copyBtn" disabled title="Copy to the clipboard (Ctrl+C)">Copy</button>
+        <button type="button" class="btn sm primary" id="pasteBtn" disabled title="Paste into the selected cell or row (Ctrl+V)">Paste</button>
+        <button type="button" class="btn sm" id="undoBtn" disabled title="Undo the last paste or edit (Ctrl+Z)">Undo</button>
       </div>
     </div>
     <p class="preview" id="preview" aria-live="polite"></p>
-  </section>
+  </header>
 
   <main class="panes">
     <section class="pane" id="xbrlPane" aria-label="XBRL filing">
       <div class="pane-head">
         <div class="pane-title"><h2>XBRL</h2><span class="pane-sub" id="xbrlSub">No filing open</span></div>
         <div class="pane-tools">
-          <input type="search" id="xbrlSearch" placeholder="Filter by name or tag" aria-label="Filter concepts">
-          <label class="check"><input type="checkbox" id="dimsChk"> Breakdowns</label>
-          <label class="field compact"><span>Show</span>
+          <input type="search" id="xbrlSearch" placeholder="Filter" aria-label="Filter line items by name or tag">
+          <label class="check" title="Show segment, note and equity breakdowns"><input type="checkbox" id="dimsChk"> Breakdowns</label>
+          <label class="check" title="Show the XBRL tag under each line item"><input type="checkbox" id="tagsChk"> Tags</label>
+          <label class="mini"><span>Show</span>
             <select id="scaleSel">
               <option value="1">Full</option>
               <option value="1e6">Million</option>
               <option value="1e9">Billion</option>
             </select>
           </label>
-          <label class="field compact" id="langWrap" hidden><span>Labels</span><select id="langSel"></select></label>
-          <label class="field compact" id="fyWrap" hidden><span>Fiscal year ends</span>
+          <label class="mini" id="langWrap" hidden><span>Labels</span><select id="langSel"></select></label>
+          <label class="mini" id="fyWrap" hidden><span>FY ends</span>
             <select id="fySel">
               <option value="1">Jan</option><option value="2">Feb</option><option value="3">Mar</option><option value="4">Apr</option>
               <option value="5">May</option><option value="6">Jun</option><option value="7">Jul</option><option value="8">Aug</option>
               <option value="9">Sep</option><option value="10">Oct</option><option value="11">Nov</option><option value="12" selected>Dec</option>
             </select>
           </label>
+          <button type="button" class="icon-btn" data-max="xbrl" aria-pressed="false" title="Give the XBRL viewer the full width">⤢</button>
         </div>
       </div>
       <div class="chips" id="fileChips"></div>
@@ -103,16 +101,19 @@
       <div class="pane-body" id="xbrlBody"></div>
     </section>
 
+    <div class="splitter" id="splitter" role="separator" aria-orientation="vertical" aria-label="Resize the two viewers" aria-valuemin="20" aria-valuemax="80" aria-valuenow="45" tabindex="0" title="Drag to resize. Double-click to reset."></div>
+
     <section class="pane" id="xlsxPane" aria-label="Excel workbook">
       <div class="pane-head">
         <div class="pane-title"><h2>Excel</h2><span class="pane-sub" id="xlsxSub">No workbook open</span></div>
         <div class="pane-tools">
-          <label class="field compact" title="How the preview recalculates formulas that use empty text"><span>Calculate like</span>
+          <label class="mini" title="How the preview recalculates formulas that use empty text"><span>Calculate like</span>
             <select id="calcSel" disabled>
-              <option value="excel">Excel</option>
+              <option value="excel">Excel / LibreOffice</option>
               <option value="sheets">Google Sheets</option>
             </select>
           </label>
+          <button type="button" class="icon-btn" data-max="xlsx" aria-pressed="false" title="Give the Excel viewer the full width">⤢</button>
         </div>
       </div>
       <nav class="tabs" id="sheetTabs" aria-label="Sheets"></nav>

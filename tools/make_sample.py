@@ -92,6 +92,8 @@ CF = {
                ProceedsFromBankLoans=450, RepaymentsOfBankLoans=-600, DividendsPaid=-765, PaymentsOfLeaseLiabilities=-65,
                NetCashFlowsReceivedFromUsedInFinancingActivities=-980),
 }
+# OCI after tax (total) and the parent's share; comprehensive income to parent = profit to parent + parent's OCI
+OCI = {2022: (-20, -15), 2023: (-30, -25), 2024: (40, 35)}
 # PP&E note: gross cost and accumulated depreciation as breakdowns (IDX role 1611000); gross - acc. dep. = net PP&E
 PPE_NOTE = {2022: dict(CarryingAmountGrossMember=9200, CarryingAmountAccumulatedDepreciationMember=2400),
             2023: dict(CarryingAmountGrossMember=10000, CarryingAmountAccumulatedDepreciationMember=2800),
@@ -193,6 +195,9 @@ def instance(cur, prior, restate=None):
         w(f'  <idx-cor:NumberOfSharesOutstanding contextRef="{label}Instant" unitRef="Shares" decimals="0">{SHARES}</idx-cor:NumberOfSharesOutstanding>')
         facts(y, label, BS, 'i')
         facts(y, label, CF, 'd')
+        oci_total, oci_parent = OCI[y]
+        w(f'  <idx-cor:OtherComprehensiveIncomeAfterTax contextRef="{label}Duration" unitRef="IDR" decimals="-6">{fmt(oci_total)}</idx-cor:OtherComprehensiveIncomeAfterTax>')
+        w(f'  <idx-cor:ComprehensiveIncomeAttributableToParentEntity contextRef="{label}Duration" unitRef="IDR" decimals="-6">{fmt(IS[y]["ProfitLossAttributableToParentEntity"] + oci_parent)}</idx-cor:ComprehensiveIncomeAttributableToParentEntity>')
         for m, v in PPE_NOTE[y].items():
             w(f'  <idx-cor:PropertyPlantAndEquipment contextRef="{label}Instant_1611000_{m}" unitRef="IDR" decimals="-6">{fmt(v)}</idx-cor:PropertyPlantAndEquipment>')
         for m, v in SEGMENTS[y].items():

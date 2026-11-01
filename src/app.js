@@ -448,14 +448,14 @@
       h += `<details class="info-wrap"><summary class="info-sum">Document information (${m.info.length})</summary><dl class="info">` +
         m.info.map((i) => `<dt>${esc(window.XBRL.humanize(i.local))}</dt><dd>${esc(i.value)}</dd>`).join('') + '</dl></details>';
     }
-    h += '<table class="xt"><thead><tr><th>Line item</th>';
+    h += `<table class="xt${state.tags ? ' show-tags' : ''}"><thead><tr><th>Line item</th>`;
     for (const c of m.columns) {
       const ci = window.XBRL.columnLabel(c);
       h += `<th data-colhead="${esc(c.key)}">${esc(ci.date)}<small>${esc(ci.span)}</small>${tags.has(c.key) ? `<span class="maptag">→ ${esc(tags.get(c.key).join(', '))}</span>` : ''}</th>`;
     }
     h += '</tr></thead><tbody>';
     for (const r of shown) {
-      h += `<tr data-row="${esc(r.key)}"><th data-row="${esc(r.key)}" tabindex="0"><span class="lab">${esc(rowLabel(r))}</span>${r.dimLabel ? `<span class="dim">${esc(r.dimLabel)}</span>` : ''}<span class="q">${esc(r.qname)} · ${esc(r.unit || '')}</span></th>`;
+      h += `<tr data-row="${esc(r.key)}"><th data-row="${esc(r.key)}" tabindex="0" title="${esc(r.qname + (r.unit ? ' · ' + r.unit : ''))}"><span class="lab">${esc(rowLabel(r))}</span>${r.dimLabel ? `<span class="dim">${esc(r.dimLabel)}</span>` : ''}<span class="q">${esc(r.qname)} · ${esc(r.unit || '')}</span></th>`;
       for (const c of m.columns) {
         const cell = r.cells.get(c.key);
         if (!cell || cell.value == null) { h += '<td class="empty-cell"></td>'; continue; }
@@ -538,6 +538,10 @@
     const lefts = [];
     let acc = RN;
     for (let c = 1; c <= nCols; c++) { lefts[c] = acc; acc += px(c); }
+    // Frozen columns stay put only while they leave room for the year columns (not on a phone or a narrow split).
+    const frozenWidth = sh.frozenCols ? lefts[Math.min(sh.frozenCols, nCols)] + px(Math.min(sh.frozenCols, nCols)) : 0;
+    const frozen = frozenWidth > 0 && frozenWidth < body.clientWidth * 0.6 ? sh.frozenCols : 0;
+    state.gridFrozen = frozen;
     const merges = new Map(sh.merges.map((m) => [m.r1 + ',' + m.c1, m]));
     const scrollTop = body.scrollTop, scrollLeft = body.scrollLeft;
 
@@ -546,7 +550,7 @@
     h += '</colgroup><thead><tr><th class="corner"></th>';
     for (let c = 1; c <= nCols; c++) {
       const ht = headerText(sh.name, c);
-      h += `<th${c <= sh.frozenCols ? ` style="left:${lefts[c]}px;z-index:5"` : ''}>${numToCol(c)}${ht ? ` <small>${esc(ht)}</small>` : ''}</th>`;
+      h += `<th${c <= frozen ? ` style="left:${lefts[c]}px;z-index:5"` : ''}>${numToCol(c)}${ht ? ` <small>${esc(ht)}</small>` : ''}</th>`;
     }
     h += '</tr></thead><tbody>';
     for (let r = 1; r <= nRows; r++) {
@@ -575,7 +579,7 @@
           if (info.indent) style.push(`padding-left:${5 + info.indent * 9}px`);
           if (info.wrap) cls.push('wrap');
         }
-        if (c <= sh.frozenCols && !m) { cls.push('frozen'); style.push(`left:${lefts[c]}px`); }
+        if (c <= frozen && !m) { cls.push('frozen'); style.push(`left:${lefts[c]}px`); }
         const title = state.prov.get(key) || (info && info.formula != null ? '=' + info.formula : '');
         const span = m ? `${m.c2 > m.c1 ? ` colspan="${m.c2 - m.c1 + 1}"` : ''}${m.r2 > m.r1 ? ` rowspan="${m.r2 - m.r1 + 1}"` : ''}` : '';
         h += `<td data-r="${r}" data-c="${c}"${span}${cls.length ? ` class="${cls.join(' ')}"` : ''}${style.length ? ` style="${style.join(';')}"` : ''}${title ? ` title="${esc(title)}"` : ''}>${esc(text)}</td>`;
@@ -728,8 +732,8 @@
     applyWrites(chosen.map((p) => ({ sheet: state.inputSheet, row: p.row, col: p.col, value: clean(p.value), before: p.existing, desc: `Auto-fill · ${p.how}` })), `Auto-fill of ${chosen.length} cells`);
     $('autoDlg').close();
     if (state.sheet !== state.inputSheet) { state.sheet = state.inputSheet; renderAll(); }
-    $('checksBox').open = true;
-    toast(`Filled ${chosen.length} cells. Check the tie-out panel under the sheet.`);
+    renderChecks();
+    toast(`Filled ${chosen.length} cells. Tie-out ${$('checksSummary').textContent || 'not available'}: details are in the panel under the sheet.`);
   }
 
   // ---------- save ----------
@@ -773,6 +777,55 @@
     return t && (t.tagName === 'INPUT' && !['checkbox', 'file'].includes(t.type) || t.tagName === 'TEXTAREA' || t.tagName === 'SELECT' || t.isContentEditable);
   }
 
+  // ---------- layout: resizable split and full-width viewers ----------
+  function wireLayout() {
+    const panes = document.querySelector('.panes'), split = $('splitter');
+    // re-render the grid when its width crosses the point where frozen columns switch on or off
+    if (window.ResizeObserver) {
+      let timer = null;
+      new ResizeObserver(() => {
+        clearTimeout(timer);
+        timer = setTimeout(() => {
+          const sh = state.book && state.book.sheet(state.sheet);
+          if (!sh || !sh.frozenCols) return;
+          const w = $('gridBody').clientWidth, px = (c) => Math.round((sh.widths[c] || 8.43) * 7 + 5);
+          let fw = 44;
+          for (let c = 1; c <= sh.frozenCols; c++) fw += px(c);
+          if ((fw < w * 0.6 ? sh.frozenCols : 0) !== state.gridFrozen) renderGrid();
+        }, 120);
+      }).observe($('gridBody'));
+    }
+    const store = (k, v) => { try { localStorage.setItem(k, v); } catch (e) { /* storage unavailable */ } };
+    const setSplit = (pct) => {
+      pct = Math.min(80, Math.max(20, Math.round(pct)));
+      panes.style.setProperty('--split', pct + '%');
+      split.setAttribute('aria-valuenow', String(pct));
+      store('workbench.split', String(pct));
+    };
+    try { const saved = Number(localStorage.getItem('workbench.split')); if (saved) setSplit(saved); } catch (e) { /* default */ }
+    split.addEventListener('pointerdown', (e) => {
+      split.setPointerCapture(e.pointerId);
+      split.classList.add('dragging');
+      const move = (ev) => { const r = panes.getBoundingClientRect(); setSplit(((ev.clientX - r.left) / r.width) * 100); };
+      const up = () => { split.classList.remove('dragging'); split.removeEventListener('pointermove', move); split.removeEventListener('pointerup', up); };
+      split.addEventListener('pointermove', move);
+      split.addEventListener('pointerup', up);
+    });
+    split.addEventListener('keydown', (e) => {
+      const cur = Number(split.getAttribute('aria-valuenow')) || 45;
+      if (e.key === 'ArrowLeft') { e.preventDefault(); setSplit(cur - 3); }
+      else if (e.key === 'ArrowRight') { e.preventDefault(); setSplit(cur + 3); }
+    });
+    split.addEventListener('dblclick', () => setSplit(45));
+    document.querySelectorAll('[data-max]').forEach((btn) => btn.addEventListener('click', () => {
+      const which = btn.dataset.max, on = !panes.classList.contains('only-' + which);
+      panes.classList.remove('only-xbrl', 'only-xlsx');
+      if (on) panes.classList.add('only-' + which);
+      document.querySelectorAll('[data-max]').forEach((b) => b.setAttribute('aria-pressed', String(on && b === btn)));
+      btn.title = on ? 'Show both viewers' : `Give the ${which === 'xbrl' ? 'XBRL' : 'Excel'} viewer the full width`;
+    }));
+  }
+
   function wire() {
     $('xbrlInput').addEventListener('change', (e) => { addXbrlFiles([...e.target.files]); e.target.value = ''; });
     $('xlsxInput').addEventListener('change', (e) => { if (e.target.files[0]) openWorkbook(e.target.files[0]); e.target.value = ''; });
@@ -786,6 +839,8 @@
 
     $('xbrlSearch').addEventListener('input', (e) => { state.filter = e.target.value; renderXbrl(); });
     $('dimsChk').addEventListener('change', (e) => { state.dims = e.target.checked; renderXbrl(); });
+    $('tagsChk').addEventListener('change', (e) => { state.tags = e.target.checked; const t = document.querySelector('#xbrlBody .xt'); if (t) t.classList.toggle('show-tags', state.tags); });
+    wireLayout();
     $('scaleSel').addEventListener('change', (e) => { state.scale = Number(e.target.value); state.scaleChosen = true; renderXbrl(); });
     $('langSel').addEventListener('change', (e) => { state.lang = e.target.value; renderXbrl(); renderTransfer(); });
     $('fySel').addEventListener('change', (e) => { state.fyEndMonth = Number(e.target.value); rebuildXbrl(); });

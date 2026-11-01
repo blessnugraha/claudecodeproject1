@@ -29,6 +29,8 @@
     PROFIT_LOSS: ['ProfitLoss', 'ProfitLossForThePeriod', 'ProfitLossForTheYear', 'ProfitLossFromContinuingOperations'],
     TAX: [{ n: 'IncomeTaxExpenseContinuingOperations' }, { n: 'IncomeTaxExpense' }, { n: 'TaxExpense' }, { n: 'TaxBenefitExpenses', sign: 'flip' }, { n: 'IncomeTaxBenefitExpense', sign: 'flip' }, { n: 'TaxBenefitExpense', sign: 'flip' }],
     PARENT_PL: ['ProfitLossAttributableToOwnersOfParent', 'ProfitLossAttributableToParentEntity', 'ProfitLossAttributableToEquityHoldersOfParentEntity', 'ProfitLossAttributableToOwnersOfTheParent'],
+    CI_PARENT: ['ComprehensiveIncomeAttributableToParentEntity', 'ComprehensiveIncomeAttributableToOwnersOfParent', 'ComprehensiveIncomeAttributableToOwnersOfTheParent'],
+    OCI: ['OtherComprehensiveIncomeAfterTax', 'OtherComprehensiveIncome', 'OtherComprehensiveIncomeNetOfTax'],
     NCI_PL: ['ProfitLossAttributableToNoncontrollingInterests', 'ProfitLossAttributableToNonControllingInterests', 'ProfitLossAttributableToNonControllingInterest'],
     SHARES: ['NumberOfSharesOutstanding', 'NumberOfOutstandingShares', 'WeightedAverageShares', 'WeightedAverageNumberOfOrdinarySharesOutstanding', 'WeightedAverageNumberOfOrdinarySharesOutstandingBasic', 'NumberOfSharesIssued', 'NumberOfSharesIssuedAndFullyPaid'],
     BASIC_EPS: ['BasicEarningsLossPerShare', 'BasicEarningsLossPerShareFromContinuingOperations', 'BasicEarningsPerShare'],
@@ -93,7 +95,10 @@
 
   // Rules run in this order; residual rules read earlier results through x.got().
   const RULES = [
-    { key: 'rev1', label: 'revenue - segment 1', pick: C.REVENUE, note: 'Total revenue. Split it across segments by hand if you need segments.' },
+    // v6 has an input "Total Revenue" row with a segment check; v2 sums the segments, so total revenue goes into Segment 1
+    { key: 'rev1', label: ['total revenue', 'revenue - segment 1'], pick: C.REVENUE,
+      notes: { 'total revenue': 'Segments are left for you: the "Revenue vs Sum of Segments" check row shows the unallocated amount until you split it.',
+        'revenue - segment 1': 'Total revenue. Split it across segments by hand if you need segments.' } },
     { key: 'cogs', label: 'cogs', sign: 'pos', pick: C.COGS, deriveFirst: true,
       derive: (x) => (x.got('rev1') != null && x.f(C.GROSS_PROFIT) != null ? { v: x.got('rev1') - x.f(C.GROSS_PROFIT), how: 'Revenue − Gross profit' } : null) },
     { key: 'sm', label: 'selling & marketing', sign: 'pos', pick: C.SELLING },
@@ -120,6 +125,9 @@
       derive: (x) => (x.f(C.EBT) != null && x.f(C.PROFIT_LOSS) != null ? { v: x.f(C.EBT) - x.f(C.PROFIT_LOSS), how: 'Profit before tax − Profit for the period' } : null) },
     { key: 'nci', label: 'minority interest (nci)', pick: C.NCI_PL, deriveFirst: true,
       derive: (x) => (x.f(C.PROFIT_LOSS) != null && x.f(C.PARENT_PL) != null ? { v: x.f(C.PROFIT_LOSS) - x.f(C.PARENT_PL), how: 'Profit for the period − Profit attributable to parent' } : null) },
+    { key: 'oci', label: 'other comprehensive income (net of tax)', pick: C.OCI, deriveFirst: true,
+      note: 'Share of owners of the parent, so Net Profit + OCI equals the comprehensive income attributable to the parent.',
+      derive: (x) => (x.f(C.CI_PARENT) != null && x.f(C.PARENT_PL) != null ? { v: x.f(C.CI_PARENT) - x.f(C.PARENT_PL), how: 'Comprehensive income attributable to parent − Profit attributable to parent' } : null) },
     { key: 'shares', label: 'shares outstanding (million)', kind: 'shares', pick: C.SHARES,
       fallbackDerive: (x) => (x.f(C.PARENT_PL) != null && x.f(C.BASIC_EPS) ? { v: Math.round(x.f(C.PARENT_PL) / x.f(C.BASIC_EPS)), how: 'Approximate: profit to parent ÷ basic EPS. EPS is rounded, so this is close to the weighted-average share count, not exact. The exact number is in the notes.' } : null) },
     { key: 'epsDil', label: 'eps - diluted (idr)', kind: 'pershare', pick: C.DIL_EPS },
@@ -198,6 +206,7 @@
     { label: 'ebt (earnings before tax)', pick: C.EBT, name: 'Profit before tax' },
     { label: 'net profit attributable to parent', pick: C.PARENT_PL, name: 'Profit to parent' },
     { label: 'eps - basic (idr)', pick: C.BASIC_EPS, name: 'Basic EPS', kind: 'pershare' },
+    { label: 'total comprehensive income (net profit + oci)', pick: C.CI_PARENT, name: 'Comprehensive income to parent' },
     { label: 'total current assets', pick: C.CURRENT_ASSETS, name: 'Current assets' },
     { label: 'total assets', pick: C.ASSETS, name: 'Total assets' },
     { label: 'total current liabilities', pick: C.CURRENT_LIAB, name: 'Current liabilities' },
@@ -346,17 +355,27 @@
         else if (rule.deriveFirst) res = tryDerive(rule.derive) || tryPick(rule.pick, rule.sign);
         else res = tryPick(rule.pick, rule.sign) || tryDerive(rule.fallbackDerive) || (rule.fallback ? tryPick(rule.fallback.pick, rule.sign, rule.fallback.note) : null);
         // got() means "placed in this sheet": a line the sheet has no row for falls into the residual rows.
-        const row = rows.get(rule.label);
-        const placed = !!(res && row && !book.isFormula(sheetName, row, col));
+        const target = targetRow(rule, rows, book, sheetName, col);
+        const row = target && target.row;
+        const placed = !!(res && row);
         got.set(rule.key, placed ? res.raw : null);
         if (!placed) continue;
         const kind = rule.kind || 'money';
         const value = res.raw / (factors[kind] || 1);
         const existing = book.rawValue(sheetName, row, col);
-        out.push({ ruleKey: rule.key, row, col, colKey, label: String(book.rawValue(sheetName, row, 1)).trim(), raw: res.raw, value, kind, how: res.how, concept: res.concept, note: res.note || rule.note || '', residual: /^Residual/.test(res.how || ''), existing: existing === '' ? null : existing });
+        out.push({ ruleKey: rule.key, row, col, colKey, label: String(book.rawValue(sheetName, row, 1)).trim(), raw: res.raw, value, kind, how: res.how, concept: res.concept, note: res.note || (rule.notes && rule.notes[target.label]) || rule.note || '', residual: /^Residual/.test(res.how || ''), existing: existing === '' ? null : existing });
       }
     }
     return out;
+  }
+
+  // A rule may name several candidate rows; the first one that exists and is not a formula wins.
+  function targetRow(rule, rows, book, sheetName, col) {
+    for (const label of [].concat(rule.label)) {
+      const row = rows.get(label);
+      if (row && !book.isFormula(sheetName, row, col)) return { row, label };
+    }
+    return null;
   }
 
   function checks(book, sheetName, model, periodMap, factors) {

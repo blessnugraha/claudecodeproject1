@@ -216,6 +216,36 @@ async function e2e(chromium) {
     assert.equal(frag.id, 'Penjualan dan pendapatan usaha');
     assert.equal(frag.inferred.length, 1);
 
+    // v6 layout: years run FY Current -> FY-4, Total Revenue is an input, TTM is a formula column
+    const v6 = path.join(root, 'tests/fixtures/mini-calculator-v6.xlsx');
+    const page6 = await browser.newPage({ viewport: { width: 1400, height: 900 } });
+    page6.on('pageerror', (e) => errors.push(e.message));
+    await page6.goto('file://' + html);
+    await page6.setInputFiles('#xlsxInput', v6);
+    await page6.waitForSelector('#gridBody table.grid');
+    await page6.setInputFiles('#xbrlInput', xbrl);
+    await page6.waitForSelector('#xbrlBody table.xt');
+    await page6.click('#autoBtn');
+    await page6.waitForSelector('#autoDlg[open]');
+    await page6.click('#autoApply');
+    const r6 = await page6.evaluate(() => {
+      const st = window.__workbench, b = st.book, S = '1. Input';
+      return {
+        map: [...st.periods.get(S).map.entries()].filter((e) => e[1]),
+        total: [3, 4, 5].map((c) => b.rawValue(S, 9, c)), seg1: b.rawValue(S, 7, 3),
+        check: b.value(S, 10, 3), oci: [3, 4, 5].map((c) => b.rawValue(S, 13, c)), ttm: b.value(S, 9, 8),
+        ppe: [b.rawValue(S, 14, 3), b.rawValue(S, 15, 3)],
+      };
+    });
+    await page6.close();
+    assert.deepEqual(r6.map, [[3, 'D|2024-12-31|12'], [4, 'D|2023-12-31|12'], [5, 'D|2022-12-31|12']], 'reversed year columns map newest first');
+    assert.deepEqual(r6.total, [13600, 12480, 11200], 'total revenue goes into the input Total Revenue row');
+    assert.equal(r6.seg1, null, 'segments are left for the user');
+    assert.equal(r6.check, 13600, 'the segment check shows the unallocated revenue');
+    assert.deepEqual(r6.oci, [35, -25, -15], "OCI is the parent's share");
+    assert.equal(r6.ttm, 13600, 'TTM formula column is recalculated, not filled');
+    assert.deepEqual(r6.ppe, [11000, 3400]);
+
     const [dl] = await Promise.all([page.waitForEvent('download'), page.click('#saveBtn')]);
     const saved = path.join(out, dl.suggestedFilename());
     await dl.saveAs(saved);

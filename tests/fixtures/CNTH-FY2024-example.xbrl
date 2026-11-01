@@ -146,6 +146,8 @@
   <idx-cor:DividendsPaid contextRef="CurrentYearDuration" unitRef="IDR" decimals="-6">-765000000000</idx-cor:DividendsPaid>
   <idx-cor:PaymentsOfLeaseLiabilities contextRef="CurrentYearDuration" unitRef="IDR" decimals="-6">-65000000000</idx-cor:PaymentsOfLeaseLiabilities>
   <idx-cor:NetCashFlowsReceivedFromUsedInFinancingActivities contextRef="CurrentYearDuration" unitRef="IDR" decimals="-6">-980000000000</idx-cor:NetCashFlowsReceivedFromUsedInFinancingActivities>
+  <idx-cor:OtherComprehensiveIncomeAfterTax contextRef="CurrentYearDuration" unitRef="IDR" decimals="-6">40000000000</idx-cor:OtherComprehensiveIncomeAfterTax>
+  <idx-cor:ComprehensiveIncomeAttributableToParentEntity contextRef="CurrentYearDuration" unitRef="IDR" decimals="-6">1955000000000</idx-cor:ComprehensiveIncomeAttributableToParentEntity>
   <idx-cor:PropertyPlantAndEquipment contextRef="CurrentYearInstant_1611000_CarryingAmountGrossMember" unitRef="IDR" decimals="-6">11000000000000</idx-cor:PropertyPlantAndEquipment>
   <idx-cor:PropertyPlantAndEquipment contextRef="CurrentYearInstant_1611000_CarryingAmountAccumulatedDepreciationMember" unitRef="IDR" decimals="-6">3400000000000</idx-cor:PropertyPlantAndEquipment>
   <idx-cor:SalesAndRevenue contextRef="CurrentYearDuration_ConsumerGoodsMember" unitRef="IDR" decimals="-6">8100000000000</idx-cor:SalesAndRevenue>
@@ -224,6 +226,8 @@
   <idx-cor:NetCashFlowsReceivedFromUsedInFinancingActivities contextRef="PriorYearDuration" unitRef="IDR" decimals="-6">-600000000000</idx-cor:NetCashFlowsReceivedFromUsedInFinancingActivities>
   <idx-cor:SalesAndRevenue contextRef="PriorYearDuration" unitRef="IDR" decimals="-6">12480000000000</idx-cor:SalesAndRevenue>
   <idx-cor:CostOfSalesAndRevenue contextRef="PriorYearDuration" unitRef="IDR" decimals="-6">-8730000000000</idx-cor:CostOfSalesAndRevenue>
+  <idx-cor:OtherComprehensiveIncomeAfterTax contextRef="PriorYearDuration" unitRef="IDR" decimals="-6">-30000000000</idx-cor:OtherComprehensiveIncomeAfterTax>
+  <idx-cor:ComprehensiveIncomeAttributableToParentEntity contextRef="PriorYearDuration" unitRef="IDR" decimals="-6">1675000000000</idx-cor:ComprehensiveIncomeAttributableToParentEntity>
   <idx-cor:PropertyPlantAndEquipment contextRef="PriorYearInstant_1611000_CarryingAmountGrossMember" unitRef="IDR" decimals="-6">10000000000000</idx-cor:PropertyPlantAndEquipment>
   <idx-cor:PropertyPlantAndEquipment contextRef="PriorYearInstant_1611000_CarryingAmountAccumulatedDepreciationMember" unitRef="IDR" decimals="-6">2800000000000</idx-cor:PropertyPlantAndEquipment>
   <idx-cor:SalesAndRevenue contextRef="PriorYearDuration_ConsumerGoodsMember" unitRef="IDR" decimals="-6">7500000000000</idx-cor:SalesAndRevenue>
