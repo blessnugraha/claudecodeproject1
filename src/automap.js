@@ -42,8 +42,9 @@
     INV: ['Inventories', 'CurrentInventories', 'Inventory', 'CurrentInventoriesNet'],
     PREPAID: ['PrepaidExpensesAndAdvances', 'AdvancesAndPrepayments', { sum: ['PrepaidExpenses', 'CurrentPrepaidExpenses', 'CurrentPrepayments', 'Prepayments', 'CurrentAdvances', 'OtherCurrentAdvances', 'Advances'] }],
     CURRENT_ASSETS: ['CurrentAssets', 'TotalCurrentAssets'],
-    PPE_GROSS: ['PropertyPlantAndEquipmentGross', 'PropertyPlantAndEquipmentGrossCarryingAmount', 'GrossCarryingAmountPropertyPlantAndEquipment'],
-    ACC_DEP: ['AccumulatedDepreciationPropertyPlantAndEquipment', 'AccumulatedDepreciationAmortisationAndImpairmentPropertyPlantAndEquipment', 'AccumulatedDepreciation'],
+    // IDX tags gross cost and accumulated depreciation as breakdowns of PropertyPlantAndEquipment in the PP&E note (role 1611000)
+    PPE_GROSS: [{ n: 'PropertyPlantAndEquipment', member: 'CarryingAmountGrossMember' }, 'PropertyPlantAndEquipmentGross', 'PropertyPlantAndEquipmentGrossCarryingAmount', 'GrossCarryingAmountPropertyPlantAndEquipment'],
+    ACC_DEP: [{ n: 'PropertyPlantAndEquipment', member: 'CarryingAmountAccumulatedDepreciationMember' }, 'AccumulatedDepreciationPropertyPlantAndEquipment', 'AccumulatedDepreciationAmortisationAndImpairmentPropertyPlantAndEquipment', 'AccumulatedDepreciation'],
     PPE: ['PropertyPlantAndEquipment', 'PropertyPlantAndEquipmentNet', 'FixedAssets', 'FixedAssetsNet'],
     INTANG: ['IntangibleAssetsOtherThanGoodwill', 'IntangibleAssets', 'IntangibleAssetsNet'],
     GOODWILL: ['Goodwill'],
@@ -103,7 +104,8 @@
         if (op == null || rev == null) return null;
         return { v: rev - S([x.got('cogs'), x.got('sm'), x.got('ga')]) - op, how: 'Residual: Gross profit − S&M − G&A − reported operating profit' };
       } },
-    { key: 'da', label: 'depreciation & amortisation (d&a)', sign: 'pos', pick: C.DA },
+    { key: 'da', label: 'depreciation & amortisation (d&a)', sign: 'pos', pick: C.DA,
+      fallback: { pick: [{ n: 'AdditionInPropertyPlantAndEquipment', member: 'CarryingAmountAccumulatedDepreciationMember' }], note: 'Depreciation of PP&E only: the year\'s additions to accumulated depreciation in the PP&E note. Amortisation of intangibles is not tagged, so add it from the notes if you need full D&A.' } },
     { key: 'oe', label: 'other expense (non-interest)', sign: 'pos', pick: C.OTHER_EXPENSE },
     { key: 'fi', label: 'finance income (interest income)', sign: 'pos', pick: C.FIN_INCOME },
     { key: 'fc', label: 'finance cost (interest expense)', sign: 'pos', pick: C.FIN_COST },
@@ -258,9 +260,11 @@
     const cols = model.columns;
     const near = (m, target) => Math.abs(m - target) <= 1;
     const year = (c) => +c.end.slice(0, 4), md = (c) => c.end.slice(5);
+    // a point-in-time-only column (e.g. opening cash two years back) is offered only if it is a real balance sheet
+    const busiest = Math.max(0, ...cols.map((c) => c.count || 0));
     const find = (months, y, mmdd) =>
       cols.find((c) => near(c.months, months) && year(c) === y && (!mmdd || md(c) === mmdd)) ||
-      cols.find((c) => c.months === 0 && (c.count || 0) >= 5 && year(c) === y && (!mmdd || md(c) === mmdd)) || null;
+      cols.find((c) => c.months === 0 && (c.count || 0) >= Math.max(5, busiest * 0.25) && year(c) === y && (!mmdd || md(c) === mmdd)) || null;
     for (const months of [12, 6]) {
       const pool = cols.filter((c) => near(c.months, months));
       const base = pool[0];
@@ -278,7 +282,7 @@
   function makeIndex(model) {
     const byLocal = new Map();
     for (const r of model.rows) if (!r.dims.length) byLocal.set(r.local.toLowerCase(), r);
-    return { byLocal, rows: model.rows.filter((r) => !r.dims.length) };
+    return { byLocal, rows: model.rows.filter((r) => !r.dims.length), all: model.rows };
   }
 
   const rowsFor = (index, n) => (n instanceof RegExp ? index.rows.filter((r) => n.test(r.local)) : [index.byLocal.get(n.toLowerCase())].filter(Boolean));
@@ -298,7 +302,10 @@
       }
       const n = typeof entry === 'object' && !(entry instanceof RegExp) ? entry.n : entry;
       const sign = typeof entry === 'object' && !(entry instanceof RegExp) ? entry.sign : null;
-      const rows = n instanceof RegExp ? index.rows.filter((r) => n.test(r.local)) : [index.byLocal.get(n.toLowerCase())].filter(Boolean);
+      // { n, member }: a single-breakdown row of concept n, e.g. PropertyPlantAndEquipment [CarryingAmountGrossMember]
+      const rows = entry && entry.member
+        ? index.all.filter((r) => r.local.toLowerCase() === n.toLowerCase() && r.dims.length === 1 && String(r.dims[0].member).split(':').pop() === entry.member)
+        : n instanceof RegExp ? index.rows.filter((r) => n.test(r.local)) : [index.byLocal.get(n.toLowerCase())].filter(Boolean);
       for (const row of rows) {
         const cell = row.cells.get(colKey);
         if (cell && cell.value != null) return { value: cell.value, row, sign };
@@ -330,7 +337,8 @@
         const tryPick = (names, sign, note) => {
           const h = names && lookup(index, names, colKey);
           if (!h) return null;
-          const tags = h.rows && h.rows.length > 1 ? 'Sum of ' + h.rows.map((r) => r.qname).join(' + ') : 'Tagged ' + h.row.qname;
+          const nameOf = (r) => r.qname + (r.dimLabel ? ' [' + r.dimLabel + ']' : '');
+          const tags = h.rows && h.rows.length > 1 ? 'Sum of ' + h.rows.map(nameOf).join(' + ') : 'Tagged ' + nameOf(h.row);
           return { raw: applySign(h.value, h.sign || sign), how: tags + (sign === 'pos' && h.value < 0 ? ' (sign flipped: the sheet stores this as a positive number)' : h.sign === 'flip' ? ' (sign flipped: the tag is signed the other way round from the sheet)' : ''), concept: h.row.qname, note };
         };
         if (rule.onlyIf && !rule.onlyIf(x)) { got.set(rule.key, null); continue; }

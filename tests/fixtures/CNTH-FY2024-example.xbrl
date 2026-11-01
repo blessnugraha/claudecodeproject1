@@ -5,39 +5,71 @@
   <xbrli:context id="CurrentYearDuration"><xbrli:entity><xbrli:identifier scheme="http://www.idx.co.id">CNTH</xbrli:identifier>
   </xbrli:entity><xbrli:period>
     <xbrli:startDate>2024-01-01</xbrli:startDate><xbrli:endDate>2024-12-31</xbrli:endDate>
-  </xbrli:period></xbrli:context>
+  </xbrli:period>
+  </xbrli:context>
   <xbrli:context id="PriorYearDuration"><xbrli:entity><xbrli:identifier scheme="http://www.idx.co.id">CNTH</xbrli:identifier>
   </xbrli:entity><xbrli:period>
     <xbrli:startDate>2023-01-01</xbrli:startDate><xbrli:endDate>2023-12-31</xbrli:endDate>
-  </xbrli:period></xbrli:context>
+  </xbrli:period>
+  </xbrli:context>
   <xbrli:context id="CurrentYearInstant"><xbrli:entity><xbrli:identifier scheme="http://www.idx.co.id">CNTH</xbrli:identifier>
   </xbrli:entity><xbrli:period>
     <xbrli:instant>2024-12-31</xbrli:instant>
-  </xbrli:period></xbrli:context>
+  </xbrli:period>
+  </xbrli:context>
   <xbrli:context id="PriorYearInstant"><xbrli:entity><xbrli:identifier scheme="http://www.idx.co.id">CNTH</xbrli:identifier>
   </xbrli:entity><xbrli:period>
     <xbrli:instant>2023-12-31</xbrli:instant>
-  </xbrli:period></xbrli:context>
+  </xbrli:period>
+  </xbrli:context>
   <xbrli:context id="CurrentYearDuration_ConsumerGoodsMember"><xbrli:entity><xbrli:identifier scheme="http://www.idx.co.id">CNTH</xbrli:identifier>
     <xbrli:segment><xbrldi:explicitMember dimension="idx-dim:OperatingSegmentsAxis">idx-dim:ConsumerGoodsMember</xbrldi:explicitMember></xbrli:segment>
   </xbrli:entity><xbrli:period>
     <xbrli:startDate>2024-01-01</xbrli:startDate><xbrli:endDate>2024-12-31</xbrli:endDate>
-  </xbrli:period></xbrli:context>
+  </xbrli:period>
+  </xbrli:context>
   <xbrli:context id="CurrentYearDuration_IndustrialMember"><xbrli:entity><xbrli:identifier scheme="http://www.idx.co.id">CNTH</xbrli:identifier>
     <xbrli:segment><xbrldi:explicitMember dimension="idx-dim:OperatingSegmentsAxis">idx-dim:IndustrialMember</xbrldi:explicitMember></xbrli:segment>
   </xbrli:entity><xbrli:period>
     <xbrli:startDate>2024-01-01</xbrli:startDate><xbrli:endDate>2024-12-31</xbrli:endDate>
-  </xbrli:period></xbrli:context>
+  </xbrli:period>
+  </xbrli:context>
+  <xbrli:context id="CurrentYearInstant_1611000_CarryingAmountGrossMember"><xbrli:entity><xbrli:identifier scheme="http://www.idx.co.id">CNTH</xbrli:identifier>
+  </xbrli:entity><xbrli:period>
+    <xbrli:instant>2024-12-31</xbrli:instant>
+  </xbrli:period>
+  <xbrli:scenario><xbrldi:explicitMember dimension="idx-cor:CarryingAmountPropertyPlantEquipmentAxis">idx-cor:CarryingAmountGrossMember</xbrldi:explicitMember></xbrli:scenario>
+  </xbrli:context>
+  <xbrli:context id="CurrentYearInstant_1611000_CarryingAmountAccumulatedDepreciationMember"><xbrli:entity><xbrli:identifier scheme="http://www.idx.co.id">CNTH</xbrli:identifier>
+  </xbrli:entity><xbrli:period>
+    <xbrli:instant>2024-12-31</xbrli:instant>
+  </xbrli:period>
+  <xbrli:scenario><xbrldi:explicitMember dimension="idx-cor:CarryingAmountPropertyPlantEquipmentAxis">idx-cor:CarryingAmountAccumulatedDepreciationMember</xbrldi:explicitMember></xbrli:scenario>
+  </xbrli:context>
   <xbrli:context id="PriorYearDuration_ConsumerGoodsMember"><xbrli:entity><xbrli:identifier scheme="http://www.idx.co.id">CNTH</xbrli:identifier>
     <xbrli:segment><xbrldi:explicitMember dimension="idx-dim:OperatingSegmentsAxis">idx-dim:ConsumerGoodsMember</xbrldi:explicitMember></xbrli:segment>
   </xbrli:entity><xbrli:period>
     <xbrli:startDate>2023-01-01</xbrli:startDate><xbrli:endDate>2023-12-31</xbrli:endDate>
-  </xbrli:period></xbrli:context>
+  </xbrli:period>
+  </xbrli:context>
   <xbrli:context id="PriorYearDuration_IndustrialMember"><xbrli:entity><xbrli:identifier scheme="http://www.idx.co.id">CNTH</xbrli:identifier>
     <xbrli:segment><xbrldi:explicitMember dimension="idx-dim:OperatingSegmentsAxis">idx-dim:IndustrialMember</xbrldi:explicitMember></xbrli:segment>
   </xbrli:entity><xbrli:period>
     <xbrli:startDate>2023-01-01</xbrli:startDate><xbrli:endDate>2023-12-31</xbrli:endDate>
-  </xbrli:period></xbrli:context>
+  </xbrli:period>
+  </xbrli:context>
+  <xbrli:context id="PriorYearInstant_1611000_CarryingAmountGrossMember"><xbrli:entity><xbrli:identifier scheme="http://www.idx.co.id">CNTH</xbrli:identifier>
+  </xbrli:entity><xbrli:period>
+    <xbrli:instant>2023-12-31</xbrli:instant>
+  </xbrli:period>
+  <xbrli:scenario><xbrldi:explicitMember dimension="idx-cor:CarryingAmountPropertyPlantEquipmentAxis">idx-cor:CarryingAmountGrossMember</xbrldi:explicitMember></xbrli:scenario>
+  </xbrli:context>
+  <xbrli:context id="PriorYearInstant_1611000_CarryingAmountAccumulatedDepreciationMember"><xbrli:entity><xbrli:identifier scheme="http://www.idx.co.id">CNTH</xbrli:identifier>
+  </xbrli:entity><xbrli:period>
+    <xbrli:instant>2023-12-31</xbrli:instant>
+  </xbrli:period>
+  <xbrli:scenario><xbrldi:explicitMember dimension="idx-cor:CarryingAmountPropertyPlantEquipmentAxis">idx-cor:CarryingAmountAccumulatedDepreciationMember</xbrldi:explicitMember></xbrli:scenario>
+  </xbrli:context>
   <xbrli:unit id="IDR"><xbrli:measure>iso4217:IDR</xbrli:measure></xbrli:unit>
   <xbrli:unit id="Shares"><xbrli:measure>xbrli:shares</xbrli:measure></xbrli:unit>
   <xbrli:unit id="IDRPerShare"><xbrli:divide><xbrli:unitNumerator><xbrli:measure>iso4217:IDR</xbrli:measure></xbrli:unitNumerator><xbrli:unitDenominator><xbrli:measure>xbrli:shares</xbrli:measure></xbrli:unitDenominator></xbrli:divide></xbrli:unit>
@@ -114,6 +146,8 @@
   <idx-cor:DividendsPaid contextRef="CurrentYearDuration" unitRef="IDR" decimals="-6">-765000000000</idx-cor:DividendsPaid>
   <idx-cor:PaymentsOfLeaseLiabilities contextRef="CurrentYearDuration" unitRef="IDR" decimals="-6">-65000000000</idx-cor:PaymentsOfLeaseLiabilities>
   <idx-cor:NetCashFlowsReceivedFromUsedInFinancingActivities contextRef="CurrentYearDuration" unitRef="IDR" decimals="-6">-980000000000</idx-cor:NetCashFlowsReceivedFromUsedInFinancingActivities>
+  <idx-cor:PropertyPlantAndEquipment contextRef="CurrentYearInstant_1611000_CarryingAmountGrossMember" unitRef="IDR" decimals="-6">11000000000000</idx-cor:PropertyPlantAndEquipment>
+  <idx-cor:PropertyPlantAndEquipment contextRef="CurrentYearInstant_1611000_CarryingAmountAccumulatedDepreciationMember" unitRef="IDR" decimals="-6">3400000000000</idx-cor:PropertyPlantAndEquipment>
   <idx-cor:SalesAndRevenue contextRef="CurrentYearDuration_ConsumerGoodsMember" unitRef="IDR" decimals="-6">8100000000000</idx-cor:SalesAndRevenue>
   <idx-cor:SalesAndRevenue contextRef="CurrentYearDuration_IndustrialMember" unitRef="IDR" decimals="-6">5500000000000</idx-cor:SalesAndRevenue>
   <idx-cor:SalesAndRevenue contextRef="PriorYearDuration" unitRef="IDR" decimals="-6">12480000000000</idx-cor:SalesAndRevenue>
@@ -190,6 +224,8 @@
   <idx-cor:NetCashFlowsReceivedFromUsedInFinancingActivities contextRef="PriorYearDuration" unitRef="IDR" decimals="-6">-600000000000</idx-cor:NetCashFlowsReceivedFromUsedInFinancingActivities>
   <idx-cor:SalesAndRevenue contextRef="PriorYearDuration" unitRef="IDR" decimals="-6">12480000000000</idx-cor:SalesAndRevenue>
   <idx-cor:CostOfSalesAndRevenue contextRef="PriorYearDuration" unitRef="IDR" decimals="-6">-8730000000000</idx-cor:CostOfSalesAndRevenue>
+  <idx-cor:PropertyPlantAndEquipment contextRef="PriorYearInstant_1611000_CarryingAmountGrossMember" unitRef="IDR" decimals="-6">10000000000000</idx-cor:PropertyPlantAndEquipment>
+  <idx-cor:PropertyPlantAndEquipment contextRef="PriorYearInstant_1611000_CarryingAmountAccumulatedDepreciationMember" unitRef="IDR" decimals="-6">2800000000000</idx-cor:PropertyPlantAndEquipment>
   <idx-cor:SalesAndRevenue contextRef="PriorYearDuration_ConsumerGoodsMember" unitRef="IDR" decimals="-6">7500000000000</idx-cor:SalesAndRevenue>
   <idx-cor:SalesAndRevenue contextRef="PriorYearDuration_IndustrialMember" unitRef="IDR" decimals="-6">5000000000000</idx-cor:SalesAndRevenue>
 </xbrli:xbrl>

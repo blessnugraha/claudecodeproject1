@@ -165,6 +165,7 @@ async function e2e(chromium) {
         cogs: [5, 6, 7].map((c) => b.rawValue(S, 7, c)),
         tax: b.rawValue(S, 9, 7), nci: b.rawValue(S, 10, 7),
         oca: b.rawValue(S, 14, 7), c12: b.rawValue(S, 12, 3),
+        ppe: [b.rawValue(S, 17, 7), b.rawValue(S, 18, 7), b.value(S, 19, 7)],
         ties: checks.flatMap((c) => c.results.map((x) => x.ok)),
       };
     });
@@ -174,6 +175,7 @@ async function e2e(chromium) {
     assert.equal(r.nci, 45.6);
     assert.equal(r.oca, 6600 - 2050 - 2250, 'other current assets absorbs lines the sheet has no row for');
     assert.equal(r.c12, 1000);
+    assert.deepEqual(r.ppe, [11000, 3400, 7600], 'gross PP&E and accumulated depreciation come from the note breakdowns in <scenario>');
     assert.ok(r.ties.length >= 9 && r.ties.every(Boolean), 'every tie-out check passes: ' + JSON.stringify(r.ties));
 
     // manual row paste of a segment breakdown into Revenue — Segment 2, then undo

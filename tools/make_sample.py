@@ -92,6 +92,10 @@ CF = {
                ProceedsFromBankLoans=450, RepaymentsOfBankLoans=-600, DividendsPaid=-765, PaymentsOfLeaseLiabilities=-65,
                NetCashFlowsReceivedFromUsedInFinancingActivities=-980),
 }
+# PP&E note: gross cost and accumulated depreciation as breakdowns (IDX role 1611000); gross - acc. dep. = net PP&E
+PPE_NOTE = {2022: dict(CarryingAmountGrossMember=9200, CarryingAmountAccumulatedDepreciationMember=2400),
+            2023: dict(CarryingAmountGrossMember=10000, CarryingAmountAccumulatedDepreciationMember=2800),
+            2024: dict(CarryingAmountGrossMember=11000, CarryingAmountAccumulatedDepreciationMember=3400)}
 SEGMENTS = {2022: dict(ConsumerGoodsMember=6700, IndustrialMember=4500),
             2023: dict(ConsumerGoodsMember=7500, IndustrialMember=5000),
             2024: dict(ConsumerGoodsMember=8100, IndustrialMember=5500)}
@@ -109,6 +113,9 @@ def check():
         eq = sum(b[k] for k in ['CommonStocks', 'AdditionalPaidInCapital', 'AppropriatedRetainedEarnings',
                                 'UnappropriatedRetainedEarnings', 'NonControllingInterests'])
         assert abs(eq - b['Equity']) < 1e-6, (y, eq)
+    for y in PPE_NOTE:
+        n = PPE_NOTE[y]
+        assert n['CarryingAmountGrossMember'] - n['CarryingAmountAccumulatedDepreciationMember'] == BS[y]['PropertyPlantAndEquipment'], y
     for y in IS:
         i = IS[y]
         ebt = sum(v for k, v in i.items() if k not in ('GrossProfit', 'ProfitLossBeforeIncomeTax', 'TaxBenefitExpenses',
@@ -143,13 +150,16 @@ def instance(cur, prior, restate=None):
       'xmlns:idx-dei="http://www.idx.co.id/xbrl/taxonomy/example/dei" xmlns:idx-dim="http://www.idx.co.id/xbrl/taxonomy/example/dim">')
     w('  <link:schemaRef xlink:type="simple" xlink:href="example-entry-point.xsd"/>')
 
-    def context(cid, start=None, end=None, instant=None, member=None):
+    def context(cid, start=None, end=None, instant=None, member=None, scenario=None):
         w(f'  <xbrli:context id="{cid}"><xbrli:entity><xbrli:identifier scheme="http://www.idx.co.id">CNTH</xbrli:identifier>')
         if member:
             w(f'    <xbrli:segment><xbrldi:explicitMember dimension="idx-dim:OperatingSegmentsAxis">idx-dim:{member}</xbrldi:explicitMember></xbrli:segment>')
         w('  </xbrli:entity><xbrli:period>')
         w(f'    <xbrli:instant>{instant}</xbrli:instant>' if instant else f'    <xbrli:startDate>{start}</xbrli:startDate><xbrli:endDate>{end}</xbrli:endDate>')
-        w('  </xbrli:period></xbrli:context>')
+        w('  </xbrli:period>')
+        if scenario:  # IDX puts its dimensions in <scenario>
+            w(f'  <xbrli:scenario><xbrldi:explicitMember dimension="idx-cor:CarryingAmountPropertyPlantEquipmentAxis">idx-cor:{scenario}</xbrldi:explicitMember></xbrli:scenario>')
+        w('  </xbrli:context>')
 
     for cid, (s, e) in ctx.items():
         context(cid, s, e)
@@ -158,6 +168,8 @@ def instance(cur, prior, restate=None):
     for y, label in [(cur, 'CurrentYear'), (prior, 'PriorYear')]:
         for m in SEGMENTS[y]:
             context(f'{label}Duration_{m}', f'{y}-01-01', f'{y}-12-31', member=m)
+        for m in PPE_NOTE[y]:
+            context(f'{label}Instant_1611000_{m}', instant=f'{y}-12-31', scenario=m)
     w('  <xbrli:unit id="IDR"><xbrli:measure>iso4217:IDR</xbrli:measure></xbrli:unit>')
     w('  <xbrli:unit id="Shares"><xbrli:measure>xbrli:shares</xbrli:measure></xbrli:unit>')
     w('  <xbrli:unit id="IDRPerShare"><xbrli:divide><xbrli:unitNumerator><xbrli:measure>iso4217:IDR</xbrli:measure></xbrli:unitNumerator>'
@@ -181,6 +193,8 @@ def instance(cur, prior, restate=None):
         w(f'  <idx-cor:NumberOfSharesOutstanding contextRef="{label}Instant" unitRef="Shares" decimals="0">{SHARES}</idx-cor:NumberOfSharesOutstanding>')
         facts(y, label, BS, 'i')
         facts(y, label, CF, 'd')
+        for m, v in PPE_NOTE[y].items():
+            w(f'  <idx-cor:PropertyPlantAndEquipment contextRef="{label}Instant_1611000_{m}" unitRef="IDR" decimals="-6">{fmt(v)}</idx-cor:PropertyPlantAndEquipment>')
         for m, v in SEGMENTS[y].items():
             w(f'  <idx-cor:SalesAndRevenue contextRef="{label}Duration_{m}" unitRef="IDR" decimals="-6">{fmt(v)}</idx-cor:SalesAndRevenue>')
     w('</xbrli:xbrl>')

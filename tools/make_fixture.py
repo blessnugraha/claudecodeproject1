@@ -30,6 +30,7 @@ rows = {
     12: ('    Cash & Cash Equivalents', None), 13: ('    Inventory', None), 14: ('    Other Current Assets', None),
     15: ('Total Current Assets', '={c}12+{c}13+{c}14'),
     16: ('Gross margin', '=IFERROR({c}8/{c}6,"")'),
+    17: ('    Gross PP&E', None), 18: ('    Accumulated Depreciation', None), 19: ('    Net PP&E (Fixed Assets)', '={c}17-{c}18'),
 }
 for r, (label, f) in rows.items():
     ws.cell(r, 1, label)

@@ -234,7 +234,7 @@
     clearValue(c);
     const vEl = doc.createElementNS(MAIN_NS, 'v');
     if (isErr(v)) { c.setAttribute('t', 'e'); vEl.textContent = v.code; }
-    else if (typeof v === 'number') { c.removeAttribute('t'); vEl.textContent = String(v); }
+    else if (typeof v === 'number') { c.removeAttribute('t'); vEl.textContent = String(+v.toPrecision(15)); }
     else if (typeof v === 'boolean') { c.setAttribute('t', 'b'); vEl.textContent = v ? '1' : '0'; }
     else if (v == null) { c.removeAttribute('t'); return; }
     else { c.setAttribute('t', 'str'); vEl.textContent = String(v); }

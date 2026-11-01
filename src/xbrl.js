@@ -63,6 +63,10 @@
         const seg = firstNS(c, NS.xbrli, 'segment') || firstNS(c, NS.xbrli, 'scenario');
         if (seg && seg.children.length) dims.push({ dim: seg.children[0].tagName, member: text(seg.children[0]) || seg.children[0].localName });
       }
+      // IDX context IDs also name the breakdown ("CurrentYearDuration_1616000_RelatedPartiesMember").
+      // Proper instances carry the dimension in <scenario> as well; if one ever does not,
+      // the ID suffix keeps the breakdown apart from the statement total for that period.
+      if (!dims.length) { const pd = idSuffixDims(id); if (pd) dims.push(...pd); }
       dims.sort((a, b) => (a.dim < b.dim ? -1 : 1));
       out.set(id, {
         id, start, end: end || instant, instant,
@@ -230,6 +234,15 @@
    * rebuilt: CurrentYearDuration = start of fiscal year .. current period end, and so on.
    */
   const CTX_RE = /^(PriorEnd|Prior(\d+)|Current|Prior)(Year|Years|Quarter|Period)?(Duration|Instant)(.*)$/;
+  // "CurrentYearInstant_1410000_CommonStocksMember" -> breakdown CommonStocksMember of role 1410000
+  function idSuffixDims(id) {
+    const m = CTX_RE.exec(id || '');
+    if (!m || !m[5]) return null;
+    const suffix = m[5].replace(/^[_-]+/, '');
+    const parts = /^(\d{7}[A-Za-z]*)_(.+)$/.exec(suffix);
+    return [{ dim: 'context', member: parts ? parts[2] : suffix, role: parts ? parts[1] : '', key: suffix }];
+  }
+
   function fyStartFor(end, fyEndMonth) {
     const [y, m] = end.split('-').map(Number);
     const fyEndYear = m <= fyEndMonth ? y : y + 1;
@@ -277,7 +290,7 @@
         else if (m[1] === 'PriorEnd') end = priorYearEnd;
         else end = addYears(priorYearEnd, -(+m[2] - 1));
         startFor = m[3] === 'Quarter' ? quarterStart : (e) => fyStartFor(e, fyEndMonth);
-        if (m[5]) dims = [{ dim: 'context', member: m[5].replace(/^[_-]+/, '') }];
+        if (m[5]) dims = idSuffixDims(id) || [];
       } else {
         end = topVote(votes, [id]);
         if (!end) continue;
@@ -508,13 +521,13 @@
         if (f.value == null) continue; // nil: reported as not applicable
         const colKey = columnFor(ctx);
         if (!colKey) continue;
-        const dimKey = ctx.dims.map((d) => localPart(d.member)).join(' · ');
+        const dimKey = ctx.dims.map((d) => d.key || localPart(d.member)).join(' · ');
         const rowKey = f.local + (dimKey ? '|' + dimKey : '');
         let row = rows.get(rowKey);
         if (!row) {
           const lab = labels.get(f.local) || {};
           row = {
-            key: rowKey, local: f.local, qname: f.qname, dims: ctx.dims, dimLabel: dimKey ? ctx.dims.map((d) => humanize(localPart(d.member))).join(' · ') : '',
+            key: rowKey, local: f.local, qname: f.qname, dims: ctx.dims, dimLabel: dimKey ? ctx.dims.map((d) => humanize(localPart(d.member)) + (d.role ? ` (${d.role})` : '')).join(' · ') : '',
             labels: lab, fallbackLabel: humanize(f.local), unit: inst.units.get(f.unitRef) || f.unitRef, cells: new Map(), order: order++,
           };
           rows.set(rowKey, row);
