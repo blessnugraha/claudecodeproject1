@@ -1,0 +1,168 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>IDX XBRL Workbench</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Serif:wght@600&display=swap">
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<div class="app">
+  <header class="appbar">
+    <div class="brand">
+      <svg class="mark" viewBox="0 0 32 32" aria-hidden="true"><rect x="3" y="5" width="11" height="22" rx="1.5"/><rect x="18" y="5" width="11" height="22" rx="1.5"/><path d="M12 16h8m-3-3 3 3-3 3"/></svg>
+      <div>
+        <h1>IDX XBRL Workbench</h1>
+        <p class="tagline">Copy figures from IDX XBRL filings into your Excel model</p>
+      </div>
+    </div>
+    <div class="file-actions">
+      <label class="btn" for="xbrlInput">Open XBRL</label>
+      <input type="file" id="xbrlInput" multiple accept=".xbrl,.xml,.zip,.xhtml,.html,.htm" class="visually-hidden">
+      <label class="btn" for="xlsxInput">Open Excel</label>
+      <input type="file" id="xlsxInput" accept=".xlsx,.xlsm" class="visually-hidden">
+      <button type="button" class="btn primary" id="saveBtn" disabled>Save filled workbook</button>
+    </div>
+  </header>
+
+  <section class="transfer" aria-label="Copy and paste">
+    <div class="slots">
+      <div class="slot source" id="srcSlot">
+        <span class="slot-label">Copy from XBRL</span>
+        <span class="slot-text" id="srcText">Click a value, or a row name to take the whole row</span>
+      </div>
+      <svg class="slot-arrow" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 12h15m-5-5 5 5-5 5"/></svg>
+      <div class="slot target" id="tgtSlot">
+        <span class="slot-label">Paste into sheet</span>
+        <span class="slot-text" id="tgtText">Click a cell, or a row number to fill every mapped year</span>
+      </div>
+    </div>
+    <div class="controls">
+      <label class="field"><span>Unit</span>
+        <select id="unitSel">
+          <option value="auto">Auto by unit</option>
+          <option value="1">As filed (×1)</option>
+          <option value="1e3">÷ 1,000 (thousand)</option>
+          <option value="1e6">÷ 1,000,000 (million)</option>
+          <option value="1e9">÷ 1,000,000,000 (billion)</option>
+        </select>
+      </label>
+      <label class="field"><span>Sign</span>
+        <select id="signSel">
+          <option value="asis">As filed</option>
+          <option value="flip">Flip sign</option>
+          <option value="pos">Always positive</option>
+        </select>
+      </label>
+      <label class="field"><span>Mode</span>
+        <select id="modeSel">
+          <option value="replace">Replace</option>
+          <option value="add">Add to cell</option>
+        </select>
+      </label>
+      <div class="buttons">
+        <button type="button" class="btn" id="copyBtn" disabled title="Copy to the clipboard (Ctrl+C)">Copy</button>
+        <button type="button" class="btn primary" id="pasteBtn" disabled title="Paste into the selected cell or row (Ctrl+V)">Paste</button>
+        <button type="button" class="btn" id="undoBtn" disabled title="Undo the last paste or edit (Ctrl+Z)">Undo</button>
+        <button type="button" class="btn" id="autoBtn" disabled>Auto-fill…</button>
+      </div>
+    </div>
+    <p class="preview" id="preview" aria-live="polite"></p>
+  </section>
+
+  <main class="panes">
+    <section class="pane" id="xbrlPane" aria-label="XBRL filing">
+      <div class="pane-head">
+        <div class="pane-title"><h2>XBRL</h2><span class="pane-sub" id="xbrlSub">No filing open</span></div>
+        <div class="pane-tools">
+          <input type="search" id="xbrlSearch" placeholder="Filter by name or tag" aria-label="Filter concepts">
+          <label class="check"><input type="checkbox" id="dimsChk"> Breakdowns</label>
+          <label class="field compact"><span>Show</span>
+            <select id="scaleSel">
+              <option value="1">Full</option>
+              <option value="1e6">Million</option>
+              <option value="1e9">Billion</option>
+            </select>
+          </label>
+          <label class="field compact" id="langWrap" hidden><span>Labels</span><select id="langSel"></select></label>
+        </div>
+      </div>
+      <div class="chips" id="fileChips"></div>
+      <div class="pane-body" id="xbrlBody"></div>
+    </section>
+
+    <section class="pane" id="xlsxPane" aria-label="Excel workbook">
+      <div class="pane-head">
+        <div class="pane-title"><h2>Excel</h2><span class="pane-sub" id="xlsxSub">No workbook open</span></div>
+        <div class="pane-tools">
+          <label class="field compact" title="How the preview recalculates formulas that use empty text"><span>Calculate like</span>
+            <select id="calcSel" disabled>
+              <option value="excel">Excel</option>
+              <option value="sheets">Google Sheets</option>
+            </select>
+          </label>
+        </div>
+      </div>
+      <nav class="tabs" id="sheetTabs" aria-label="Sheets"></nav>
+      <div class="periods" id="periodBar" hidden></div>
+      <div class="pane-body grid-wrap" id="gridBody" tabindex="0"></div>
+      <details class="checks" id="checksBox" hidden>
+        <summary>Tie-out with the filing <span id="checksSummary"></span></summary>
+        <div class="checks-body" id="checksBody"></div>
+      </details>
+    </section>
+  </main>
+</div>
+
+<dialog id="autoDlg" aria-labelledby="autoTitle">
+  <form method="dialog" class="dlg">
+    <header class="dlg-head">
+      <h2 id="autoTitle">Auto-fill</h2>
+      <p class="dlg-sub" id="autoSub"></p>
+    </header>
+    <div class="dlg-controls">
+      <label class="field"><span>Money</span>
+        <select id="autoMoney">
+          <option value="1">As filed (×1)</option>
+          <option value="1e3">÷ 1,000 (thousand)</option>
+          <option value="1e6">÷ 1,000,000 (million)</option>
+          <option value="1e9">÷ 1,000,000,000 (billion)</option>
+        </select>
+      </label>
+      <label class="field"><span>Share counts</span>
+        <select id="autoShares">
+          <option value="1">As filed (×1)</option>
+          <option value="1e3">÷ 1,000 (thousand)</option>
+          <option value="1e6">÷ 1,000,000 (million)</option>
+        </select>
+      </label>
+      <label class="check"><input type="checkbox" id="autoOverwrite"> Also overwrite cells that already have a different value</label>
+    </div>
+    <div class="dlg-body" id="autoBody"></div>
+    <footer class="dlg-foot">
+      <span class="dlg-count" id="autoCount"></span>
+      <button type="button" class="btn" id="autoNone">Select none</button>
+      <button type="button" class="btn" id="autoAll">Select all</button>
+      <button type="submit" class="btn" value="cancel">Cancel</button>
+      <button type="button" class="btn primary" id="autoApply">Fill cells</button>
+    </footer>
+  </form>
+</dialog>
+
+<div class="toast" id="toast" role="status" aria-live="polite" hidden></div>
+
+<script src="../node_modules/jszip/dist/jszip.min.js"></script>
+<script src="../node_modules/exceljs/dist/exceljs.min.js"></script>
+<script src="formula.js"></script>
+<script src="numfmt.js"></script>
+<script src="xbrl.js"></script>
+<script src="workbook.js"></script>
+<script src="automap.js"></script>
+<script src="sample-data.js"></script>
+<script src="app.js"></script>
+</body>
+</html>

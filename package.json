@@ -1,0 +1,19 @@
+{
+  "name": "idx-xbrl-workbench",
+  "version": "1.0.0",
+  "private": true,
+  "description": "One-page browser tool: open IDX XBRL filings and an Excel workbook side by side, copy figures across, save the filled workbook.",
+  "scripts": {
+    "build": "node build.mjs",
+    "test": "node tests/run-tests.cjs"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/blessnugraha/claudecodeproject1.git"
+  },
+  "license": "ISC",
+  "devDependencies": {
+    "exceljs": "4.4.0",
+    "jszip": "3.10.1"
+  }
+}
